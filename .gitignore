@@ -1,0 +1,10 @@
+# Private design notes and brainstorming -- kept locally, never pushed
+notes/
+
+# Local tooling
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+.vscode/
