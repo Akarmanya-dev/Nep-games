@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Recharge Card</title>
+  <meta name="description" content="Scratch the recharge card, dial the PIN. Don't scratch off the numbers!">
+  <meta name="theme-color" content="#ffd21a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Baloo+2:wght@600;800&family=Mukta:wght@400;600;800&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    /* Palette: a Nepali pasal -- hand-painted yellow signboard, mint distemper walls,
+       glass-top counter, a black candybar phone with a green backlit screen. */
+    :root {
+      --wall: #d5ead8;
+      --wall-line: rgba(255, 255, 255, .28);
+      --wall-shadow: #b6d4bd;
+      --ink: #10212b;
+      --muted: #3f5a67;
+      --sign: #ffd21a;
+      --sign-red: #d4001a;
+      --sign-black: #141414;
+      --glass: rgba(214, 236, 243, .72);
+      --glass-edge: #1f3b48;
+      --phone: #1b1d21;
+      --phone-edge: #34383e;
+      --key: #2b2f34;
+      --key-press: #454b52;
+      --key-text: #eef3f6;
+      --key-sub: #97a3ab;
+      --lcd: #a4cf68;
+      --lcd-ink: #15230b;
+      --go: #23a047;
+      --paper: #fffdf6;
+    }
+    * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      min-height: 100dvh;
+      background:
+        repeating-linear-gradient(90deg, var(--wall-line) 0 2px, transparent 2px 46px),
+        linear-gradient(180deg, var(--wall) 0%, var(--wall) 70%, var(--wall-shadow) 100%);
+      background-attachment: fixed;
+      color: var(--ink);
+      font-family: "Mukta", system-ui, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .shop { min-height: 100dvh; display: flex; flex-direction: column; }
+
+    /* --- signboard ----------------------------------------------------- */
+    .sign {
+      background: var(--sign);
+      border-bottom: 6px solid var(--sign-red);
+      box-shadow: 0 4px 0 rgba(0, 0, 0, .12);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: max(10px, env(safe-area-inset-top)) 16px 8px;
+    }
+    .sign .back { color: var(--sign-black); font-weight: 800; text-decoration: none; font-size: .95rem; }
+    .sign .board { text-align: center; line-height: 1.2; }
+    .sign .np {
+      display: block;
+      font-family: "Yatra One", "Mukta", sans-serif;
+      color: var(--sign-red);
+      font-size: clamp(1.25rem, 5vw, 2.4rem);
+      text-shadow: 1px 1px 0 rgba(0, 0, 0, .15);
+    }
+    .sign .en {
+      display: block;
+      font-family: "Baloo 2", sans-serif; font-weight: 800;
+      color: var(--sign-black);
+      font-size: clamp(.62rem, 2.3vw, .9rem);
+      letter-spacing: .12em; text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .sign .mute {
+      justify-self: end;
+      background: var(--sign-black); color: var(--sign);
+      border: 0; border-radius: 999px;
+      width: 36px; height: 36px; font-size: 1rem; cursor: pointer;
+    }
+
+    /* --- counter + phone layout --------------------------------------- */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+      padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+      min-height: 0;
+    }
+    .counter { display: flex; flex-direction: column; gap: 8px; }
+    .hud { display: flex; justify-content: space-between; align-items: center; }
+    .chip {
+      font-family: "Baloo 2", sans-serif; font-weight: 800;
+      background: var(--sign-black); color: var(--sign);
+      padding: 2px 12px; border-radius: 8px; font-size: 1rem;
+    }
+    .chip.clock { font-family: "VT323", monospace; font-size: 1.35rem; color: var(--lcd); min-width: 5.5ch; text-align: right; }
+    .hint { color: var(--muted); font-size: .9rem; text-align: center; display: none; }
+
+    /* Phones: lock to one screen, the phone fills whatever is left. */
+    @media (max-width: 859px) {
+      html, body { height: 100%; overflow: hidden; }
+      .shop { height: 100dvh; }
+      main { min-height: 0; }
+    }
+
+    /* Laptops: the card lies on a glass counter, the phone stands beside it. */
+    @media (min-width: 860px) {
+      main {
+        max-width: 1180px;
+        grid-template-rows: none;
+        grid-template-columns: minmax(0, 1fr) 330px;
+        align-items: center;
+        gap: 56px;
+        padding: 32px 40px 40px;
+      }
+      .counter {
+        background: var(--glass);
+        border: 3px solid var(--glass-edge);
+        border-radius: 18px;
+        padding: 28px 36px 24px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 18px 0 -6px var(--glass-edge), 0 30px 40px rgba(16, 33, 43, .18);
+        gap: 16px;
+      }
+      .counter .card-wrap { max-width: 620px; margin: 0 auto; }
+      .hint { display: block; }
+      .phone { height: min(700px, calc(100dvh - 190px)); min-height: 560px; }
+    }
+
+    /* --- card ---------------------------------------------------------- */
+    .card-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 340 / 214;
+      touch-action: none;
+      filter: drop-shadow(0 6px 10px rgba(16, 33, 43, .35));
+    }
+    .card-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .coin {
+      position: absolute;
+      width: 13%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff6c8, #d9b24a 45%, #8a6a1c 100%);
+      border: 2px solid #6d5313;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .5);
+      display: grid; place-items: center;
+      font-weight: 800; color: #5a430c; font-size: clamp(12px, 2.4vw, 22px);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .1s, box-shadow .1s;
+    }
+    .coin.show { opacity: 1; }
+    .coin.hot { box-shadow: 0 0 0 4px rgba(212, 0, 26, .85), 0 2px 6px rgba(0, 0, 0, .5); }
+    .warn {
+      position: absolute; left: 50%; top: 44%;
+      transform: translate(-50%, -100%);
+      background: var(--sign-red); color: #fff;
+      font-family: "Baloo 2", sans-serif; font-weight: 800;
+      padding: 2px 14px; border-radius: 999px; font-size: 1rem;
+      opacity: 0; transition: opacity .15s; pointer-events: none; white-space: nowrap;
+    }
+    .warn.show { opacity: 1; }
+
+    /* --- phone --------------------------------------------------------- */
+    .phone {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: linear-gradient(160deg, #2a2d32, var(--phone) 40%);
+      border: 2px solid var(--phone-edge);
+      border-radius: 34px 34px 44px 44px;
+      padding: 14px 14px 18px;
+      box-shadow: 0 14px 30px rgba(16, 33, 43, .35), inset 0 1px 0 rgba(255, 255, 255, .08);
+    }
+    .earpiece { width: 56px; height: 6px; border-radius: 3px; background: #0c0d0f; margin: 0 auto; flex-shrink: 0; }
+    .lcd {
+      background: var(--lcd);
+      color: var(--lcd-ink);
+      border: 6px solid #0e1012;
+      border-radius: 10px;
+      padding: 4px 8px 6px;
+      font-family: "VT323", monospace;
+      box-shadow: inset 0 0 18px rgba(21, 35, 11, .35);
+      display: flex; flex-direction: column; gap: 2px;
+      flex-shrink: 0;
+    }
+    .lcd .status { display: flex; justify-content: space-between; align-items: center; font-size: 1rem; line-height: 1; }
+    .lcd .bars { letter-spacing: -1px; }
+    .lcd .batt { width: 20px; height: 9px; border: 2px solid var(--lcd-ink); position: relative; }
+    .lcd .batt::before { content: ""; position: absolute; inset: 1px 4px 1px 1px; background: var(--lcd-ink); }
+    .lcd .batt::after { content: ""; position: absolute; right: -5px; top: 1px; width: 3px; height: 3px; background: var(--lcd-ink); }
+    .lcd .dial { font-size: 1.6rem; line-height: 1.05; word-break: break-all; min-height: 3.4rem; }
+    .lcd .dial .cursor { animation: blink 1s steps(1) infinite; }
+    .lcd .msg { font-size: 1.1rem; line-height: 1.1; min-height: 1.2rem; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .keys {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-auto-rows: 1fr;
+      gap: 7px;
+    }
+    .keys button {
+      grid-column: span 2;
+      border: 0;
+      border-radius: 14px 14px 18px 18px;
+      background: var(--key);
+      color: var(--key-text);
+      cursor: pointer;
+      min-height: 34px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      line-height: 1;
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .35);
+    }
+    .keys button:active { background: var(--key-press); box-shadow: none; }
+    .keys .num { font: 600 clamp(1.2rem, 5vw, 1.55rem) "Mukta", sans-serif; }
+    .keys .sub { font-size: .62rem; color: var(--key-sub); letter-spacing: .08em; margin-top: 1px; }
+    .keys .call, .keys .clear { grid-column: span 3; font: 800 1rem "Baloo 2", sans-serif; }
+    .keys .call { background: var(--go); }
+    .keys .call:active { background: #2fbd57; }
+    .keys .clear { background: #3a3f45; }
+
+    /* --- overlays ------------------------------------------------------ */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(16, 33, 43, .55);
+      backdrop-filter: blur(3px);
+      display: grid; place-items: center;
+      padding: 16px;
+      z-index: 10;
+    }
+    .overlay[hidden] { display: none; }
+    .signpanel {
+      width: 100%; max-width: 420px;
+      background: var(--sign);
+      border: 6px solid var(--sign-red);
+      outline: 3px solid var(--sign-black);
+      border-radius: 10px;
+      padding: 22px 22px 20px;
+      text-align: center;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+    }
+    .signpanel h1 {
+      font-family: "Yatra One", sans-serif; font-weight: 400;
+      color: var(--sign-red); font-size: 2.8rem; line-height: 1.05;
+    }
+    .signpanel .sub { font-family: "Baloo 2", sans-serif; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: .85rem; }
+    .signpanel ol { text-align: left; margin: 16px 0 6px; padding-left: 1.3em; font-weight: 600; }
+    .signpanel li { margin: 5px 0; }
+    .signpanel .note { font-weight: 600; margin-top: 6px; }
+    .receipt {
+      width: 100%; max-width: 380px;
+      background: var(--paper);
+      color: var(--ink);
+      padding: 22px 22px 18px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+      text-align: center;
+      /* torn bottom edge */
+      -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 20px 10px repeat-x;
+              mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 20px 10px repeat-x;
+      padding-bottom: 28px;
+    }
+    .receipt .shopname { font-family: "Yatra One", sans-serif; color: var(--sign-red); font-size: 1.5rem; }
+    .receipt .ok { font-family: "VT323", monospace; font-size: 1.3rem; margin-top: 2px; }
+    .receipt .rank { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 2rem; margin-top: 10px; line-height: 1.1; }
+    .receipt .line { color: var(--muted); margin-top: 4px; }
+    .receipt table {
+      width: 100%; margin: 14px 0 4px; border-collapse: collapse;
+      font-family: "VT323", monospace; font-size: 1.25rem;
+      border-top: 2px dashed #9aa7ad; border-bottom: 2px dashed #9aa7ad;
+    }
+    .receipt td { padding: 3px 0; }
+    .receipt td:first-child { text-align: left; }
+    .receipt td:last-child { text-align: right; }
+    .btn {
+      display: block; width: 100%;
+      margin-top: 14px; padding: 12px;
+      border: 0; border-radius: 10px;
+      background: var(--sign-red); color: #fff;
+      font: 800 1.2rem "Baloo 2", sans-serif;
+      cursor: pointer;
+      box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25);
+    }
+    .btn:active { box-shadow: none; transform: translateY(2px); }
+    .btn.secondary { background: var(--sign-black); color: var(--sign); }
+    .toast {
+      position: fixed; left: 50%; top: 40%;
+      transform: translate(-50%, -50%) scale(.9);
+      background: var(--lcd); color: var(--lcd-ink);
+      border: 4px solid #0e1012;
+      font-family: "VT323", monospace;
+      padding: 12px 22px; border-radius: 10px;
+      font-size: 1.6rem; text-align: center; line-height: 1.1;
+      opacity: 0; transition: opacity .2s, transform .2s;
+      pointer-events: none; z-index: 5;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .toast small { display: block; font-size: 1.15rem; }
+  </style>
+</head>
+<body>
+<div class="shop">
+  <header class="sign">
+    <a class="back" href="../../index.html">← खेलहरू</a>
+    <div class="board">
+      <span class="np">यहाँ रिचार्ज कार्ड पाइन्छ</span>
+      <span class="en">Recharge cards available here</span>
+    </div>
+    <button class="mute" id="mute" aria-label="Toggle sound">🔊</button>
+  </header>
+
+  <main>
+    <section class="counter">
+      <div class="hud">
+        <span class="chip" id="level">कार्ड १/३</span>
+        <span class="chip clock" id="timer">0.0s</span>
+      </div>
+      <div class="card-wrap" id="cardWrap">
+        <canvas id="baseCanvas"></canvas>
+        <canvas id="inkCanvas"></canvas>
+        <canvas id="silverCanvas"></canvas>
+        <div class="coin" id="coin">५</div>
+        <div class="warn" id="warn">बिस्तारै! Slowly!</div>
+      </div>
+      <p class="hint">Scratch gently with the coin, then dial on the phone. Your keyboard works too.</p>
+    </section>
+
+    <section class="phone">
+      <div class="earpiece"></div>
+      <div class="lcd">
+        <div class="status"><span class="bars">▂▄▆█</span><span id="operator">Sajilo</span><span class="batt"></span></div>
+        <div class="dial" id="dial"></div>
+        <div class="msg" id="msg">Scratch, then dial.</div>
+      </div>
+      <div class="keys" id="keys"></div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="startScreen">
+  <div class="signpanel">
+    <h1>रिचार्ज कार्ड</h1>
+    <div class="sub">Recharge Card</div>
+    <ol>
+      <li>Scratch the silver strip with the coin.</li>
+      <li>Too fast and you scratch off the numbers!</li>
+      <li>Dial <b>*412*PIN#</b> and press Call.</li>
+    </ol>
+    <p class="note">३ कार्ड · 3 cards · beat the clock</p>
+    <button class="btn" id="startBtn">सुरु गरौं · Start</button>
+  </div>
+</div>
+
+<div class="overlay" id="resultScreen" hidden>
+  <div class="receipt">
+    <div class="shopname">सजिलो पसल</div>
+    <div class="ok">*** RECHARGE SUCCESSFUL ***</div>
+    <div class="rank" id="rankTitle"></div>
+    <p class="line" id="rankLine"></p>
+    <table id="resultTable"></table>
+    <button class="btn" id="shareBtn">Share</button>
+    <button class="btn secondary" id="againBtn">फेरि खेलौं · Play again</button>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// Design knobs -- tweak these first.
+// ============================================================================
+const DIAL_PREFIX = "*412*";   // recharge code printed on the card
+const PIN_LENGTH = 16;
+const WRONG_PIN_PENALTY = 3;   // seconds added per failed recharge attempt
+const CARD_BRAND = "Sajilo Mobile";   // fictional operator -- no real logos
+const OPERATOR_SHORT = "Sajilo";      // operator name on the phone screen
+
+// One entry per card, in play order. Difficulty rises through the list.
+//   toughness  -- how much silver one pass removes (0..1; lower = thicker silver)
+//   speedLimit -- scratch speed (card-widths per second) above which you damage digits
+//   smudged    -- digits printed badly at the factory; the player has to guess them
+const LEVELS = [
+  { amount: 50,  colors: ["#ff9a3c", "#e2452b"], toughness: 0.55, speedLimit: 3.2, smudged: 0 },
+  { amount: 100, colors: ["#2bb3a3", "#16627a"], toughness: 0.38, speedLimit: 2.6, smudged: 0 },
+  { amount: 500, colors: ["#8e5bd6", "#4a2a8c"], toughness: 0.26, speedLimit: 2.1, smudged: 1 },
+];
+
+// Rank titles shown at the end: first matching rule wins.
+const RANKS = [
+  { test: r => r.damaged === 0 && r.time < 45, title: "पसले दाइ", line: "Scratches like the shop dai who has done ten thousand cards." },
+  { test: r => r.damaged === 0,                title: "धैर्यवान",  line: "Slow and careful. Not one digit lost." },
+  { test: r => r.damaged >= 4,                 title: "नम्बर मेटाउने", line: "The coin won. The digits lost." },
+  { test: r => true,                           title: "नियमित ग्राहक", line: "A regular. A digit or two lost, recharge done." },
+];
+
+// ============================================================================
+// Card geometry (logical units; the canvas is scaled to fit the screen)
+// ============================================================================
+const W = 340, H = 214;
+const STRIP = { x: 18, y: 100, w: 304, h: 46 };
+const COIN_RADIUS = 11;
+
+const $ = id => document.getElementById(id);
+const toNepaliDigits = s => String(s).replace(/\d/g, d => "०१२३४५६७८९"[d]);
+
+// ============================================================================
+// Sound: synthesized, no audio files (touch-tone beeps + coin scratch noise)
+// ============================================================================
+const Sound = {
+  ctx: null, muted: false, scratchGain: null, scratchFilter: null,
+
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+    // Looping white noise through a band-pass filter = coin on foil.
+    const len = this.ctx.sampleRate;
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    this.scratchFilter = this.ctx.createBiquadFilter();
+    this.scratchFilter.type = "bandpass";
+    this.scratchFilter.frequency.value = 2500;
+    this.scratchFilter.Q.value = 0.8;
+    this.scratchGain = this.ctx.createGain();
+    this.scratchGain.gain.value = 0;
+    src.connect(this.scratchFilter).connect(this.scratchGain).connect(this.ctx.destination);
+    src.start();
+  },
+
+  scratch(level, harsh) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.scratchGain.gain.setTargetAtTime(this.muted ? 0 : Math.min(level, 1) * 0.25, t, 0.03);
+    this.scratchFilter.frequency.setTargetAtTime(harsh ? 5200 : 2500, t, 0.05);
+  },
+
+  tone(freqs, dur, vol = 0.12, type = "sine") {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.connect(this.ctx.destination);
+    for (const f of freqs) {
+      const o = this.ctx.createOscillator();
+      o.type = type; o.frequency.value = f;
+      o.connect(g); o.start(t); o.stop(t + dur);
+    }
+  },
+
+  dtmf(key) {
+    const rows = { 1: 697, 2: 697, 3: 697, 4: 770, 5: 770, 6: 770, 7: 852, 8: 852, 9: 852, "*": 941, 0: 941, "#": 941 };
+    const cols = { 1: 1209, 4: 1209, 7: 1209, "*": 1209, 2: 1336, 5: 1336, 8: 1336, 0: 1336, 3: 1477, 6: 1477, 9: 1477, "#": 1477 };
+    if (rows[key]) this.tone([rows[key], cols[key]], 0.12, 0.08);
+  },
+  success() { this.tone([880], 0.12); setTimeout(() => this.tone([1320], 0.25), 110); },
+  error()   { this.tone([180], 0.35, 0.15, "square"); },
+};
+
+// ============================================================================
+// Card rendering
+// ============================================================================
+const baseCanvas = $("baseCanvas"), inkCanvas = $("inkCanvas"), silverCanvas = $("silverCanvas");
+const base = baseCanvas.getContext("2d"), ink = inkCanvas.getContext("2d"), silver = silverCanvas.getContext("2d");
+
+function sizeCanvases() {
+  // Fixed internal resolution (~1360px wide), independent of layout, so the card always
+  // renders and stays sharp when the window is resized or the phone rotates.
+  const scale = 4;
+  for (const [c, ctx] of [[baseCanvas, base], [inkCanvas, ink], [silverCanvas, silver]]) {
+    c.width = Math.round(W * scale);
+    c.height = Math.round(H * scale);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function digitBoxes() {
+  // 16 digits in groups of 4, centered in the strip.
+  const charW = 15, groupGap = 11;
+  const total = PIN_LENGTH * charW + (PIN_LENGTH / 4 - 1) * groupGap;
+  let x = STRIP.x + (STRIP.w - total) / 2;
+  const boxes = [];
+  for (let i = 0; i < PIN_LENGTH; i++) {
+    if (i > 0 && i % 4 === 0) x += groupGap;
+    boxes.push({ x, y: STRIP.y + 8, w: charW, h: STRIP.h - 16 });
+    x += charW;
+  }
+  return boxes;
+}
+
+function drawBase(card) {
+  const [c1, c2] = card.level.colors;
+  base.clearRect(0, 0, W, H);
+  roundRect(base, 0, 0, W, H, 14);
+  const g = base.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  base.fillStyle = g; base.fill();
+
+  // Decorative circles
+  base.save(); base.clip();
+  base.fillStyle = "rgba(255,255,255,.10)";
+  for (const [x, y, r] of [[300, 20, 70], [40, 200, 60], [250, 210, 40]]) {
+    base.beginPath(); base.arc(x, y, r, 0, Math.PI * 2); base.fill();
+  }
+  base.restore();
+
+  base.fillStyle = "#fff";
+  base.font = "800 20px Mukta, sans-serif";
+  base.fillText(CARD_BRAND, 18, 34);
+  base.font = "600 10px Mukta, sans-serif";
+  base.fillStyle = "rgba(255,255,255,.85)";
+  base.fillText("PREPAID RECHARGE CARD", 18, 50);
+
+  base.textAlign = "right";
+  base.fillStyle = "#fff";
+  base.font = "800 30px Mukta, sans-serif";
+  base.fillText(`Rs. ${card.level.amount}`, W - 18, 40);
+  base.font = "600 16px Mukta, sans-serif";
+  base.fillText(`रु. ${toNepaliDigits(card.level.amount)}`, W - 18, 62);
+  base.textAlign = "left";
+
+  // White strip under the silver
+  base.fillStyle = "#fbfaf6";
+  roundRect(base, STRIP.x, STRIP.y, STRIP.w, STRIP.h, 6); base.fill();
+
+  base.fillStyle = "rgba(255,255,255,.9)";
+  base.font = "600 10px Mukta, sans-serif";
+  base.fillText(`To recharge dial ${DIAL_PREFIX}PIN#`, 18, 168);
+  base.fillText(`Serial No: ${card.serial}`, 18, 184);
+  base.fillText("Valid till: 2072 Chaitra end", 18, 200);
+  base.textAlign = "right";
+  base.fillText("रिचार्ज कार्ड", W - 18, 200);
+  base.textAlign = "left";
+}
+
+function drawInk(card) {
+  ink.clearRect(0, 0, W, H);
+  ink.fillStyle = "#111";
+  ink.font = "700 24px 'Courier New', monospace";
+  ink.textAlign = "center";
+  ink.textBaseline = "middle";
+  card.boxes.forEach((b, i) => ink.fillText(card.pin[i], b.x + b.w / 2, b.y + b.h / 2 + 1));
+  ink.textAlign = "left"; ink.textBaseline = "alphabetic";
+
+  // Factory smudges: part of the digit never printed.
+  ink.save();
+  ink.globalCompositeOperation = "destination-out";
+  for (const i of card.smudged) {
+    const b = card.boxes[i];
+    ink.fillRect(b.x, b.y + b.h * 0.42, b.w, b.h * 0.58);
+  }
+  ink.restore();
+}
+
+function drawSilver() {
+  silver.clearRect(0, 0, W, H);
+  silver.save();
+  roundRect(silver, STRIP.x - 2, STRIP.y - 2, STRIP.w + 4, STRIP.h + 4, 7);
+  silver.clip();
+  const g = silver.createLinearGradient(0, STRIP.y, 0, STRIP.y + STRIP.h);
+  g.addColorStop(0, "#e4e7ea"); g.addColorStop(0.5, "#9ea4aa"); g.addColorStop(1, "#d3d7db");
+  silver.fillStyle = g;
+  silver.fillRect(STRIP.x - 2, STRIP.y - 2, STRIP.w + 4, STRIP.h + 4);
+  // Foil grain
+  for (let i = 0; i < 900; i++) {
+    silver.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,.35)" : "rgba(60,60,60,.18)";
+    silver.fillRect(STRIP.x + Math.random() * STRIP.w, STRIP.y + Math.random() * STRIP.h, 1, 1);
+  }
+  silver.fillStyle = "rgba(90,95,100,.45)";
+  silver.font = "800 11px Mukta, sans-serif";
+  silver.textAlign = "center";
+  silver.fillText("SCRATCH HERE  ·  SCRATCH HERE  ·  SCRATCH HERE", W / 2, STRIP.y + STRIP.h / 2 + 4);
+  silver.restore();
+}
+
+// ============================================================================
+// Game state
+// ============================================================================
+let card = null;          // current card
+let levelIndex = 0;
+let results = [];
+let startTime = 0, elapsedBefore = 0, running = false, penalty = 0;
+let typed = "";
+let busy = false;         // true while the "USSD code running..." animation plays
+
+function randomPin() {
+  let s = "";
+  for (let i = 0; i < PIN_LENGTH; i++) s += Math.floor(Math.random() * 10);
+  return s;
+}
+
+function newCard() {
+  const level = LEVELS[levelIndex];
+  const smudged = [];
+  while (smudged.length < level.smudged) {
+    const i = Math.floor(Math.random() * PIN_LENGTH);
+    if (!smudged.includes(i)) smudged.push(i);
+  }
+  card = {
+    level,
+    pin: randomPin(),
+    serial: String(Math.floor(1e10 + Math.random() * 9e10)).replace(/(\d{4})(\d{4})/, "$1 $2 "),
+    boxes: digitBoxes(),
+    smudged,
+    damage: new Array(PIN_LENGTH).fill(0),
+    wrong: 0,
+    start: now(),
+  };
+  sizeCanvases();
+  drawBase(card); drawInk(card); drawSilver();
+  typed = DIAL_PREFIX;
+  renderDial();
+  setMsg("Scratch, then dial.");
+  $("level").textContent = `कार्ड ${toNepaliDigits(levelIndex + 1)}/${toNepaliDigits(LEVELS.length)}`;
+}
+
+function now() { return performance.now() / 1000; }
+function elapsed() { return (running ? now() - startTime : 0) + elapsedBefore + penalty; }
+
+function tick() {
+  $("timer").textContent = `${elapsed().toFixed(1)}s`;
+  requestAnimationFrame(tick);
+}
+
+// ============================================================================
+// Scratching
+// ============================================================================
+const wrap = $("cardWrap"), coin = $("coin"), warn = $("warn");
+let scratching = false, last = null, trail = [], warnTimer = 0;
+const SPEED_WINDOW = 0.08;   // seconds of movement used to measure scratch speed
+
+function toCard(e) {
+  const r = wrap.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height), t: e.timeStamp };
+}
+
+function inStrip(p, pad = 0) {
+  return p.x > STRIP.x - pad && p.x < STRIP.x + STRIP.w + pad && p.y > STRIP.y - pad && p.y < STRIP.y + STRIP.h + pad;
+}
+
+function moveCoin(e) {
+  const r = wrap.getBoundingClientRect();
+  coin.style.left = `${e.clientX - r.left}px`;
+  coin.style.top = `${e.clientY - r.top}px`;
+}
+
+wrap.addEventListener("pointerdown", e => {
+  if (!running || busy) return;
+  Sound.init();
+  wrap.setPointerCapture(e.pointerId);
+  scratching = true;
+  last = toCard(e);
+  trail = [];
+  coin.classList.add("show");
+  moveCoin(e);
+});
+
+wrap.addEventListener("pointermove", e => {
+  if (!scratching) return;
+  moveCoin(e);
+  // Use coalesced events so fast strokes stay smooth on phones.
+  const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of (events.length ? events : [e])) scratchTo(toCard(ev));
+});
+
+function endScratch() {
+  scratching = false;
+  last = null;
+  coin.classList.remove("show", "hot");
+  Sound.scratch(0, false);
+}
+wrap.addEventListener("pointerup", endScratch);
+wrap.addEventListener("pointercancel", endScratch);
+
+function scratchTo(p) {
+  const dist = Math.hypot(p.x - last.x, p.y - last.y);
+  // Speed = path length over a short window, so near-identical timestamps can't spike it.
+  trail.push({ t: p.t / 1000, d: dist });
+  while (trail.length > 1 && trail[trail.length - 1].t - trail[0].t > SPEED_WINDOW) trail.shift();
+  const span = Math.max(trail[trail.length - 1].t - trail[0].t, 0.016);
+  const speed = trail.reduce((s, q) => s + q.d, 0) / W / span;   // card-widths per second
+  const tooFast = speed > card.level.speedLimit;
+  const overStrip = inStrip(p, COIN_RADIUS) || inStrip(last, COIN_RADIUS);
+
+  if (overStrip && dist > 0) {
+    silver.save();
+    silver.globalCompositeOperation = "destination-out";
+    silver.globalAlpha = card.level.toughness;
+    silver.lineCap = "round";
+    silver.lineWidth = COIN_RADIUS * 2;
+    silver.beginPath(); silver.moveTo(last.x, last.y); silver.lineTo(p.x, p.y); silver.stroke();
+    silver.restore();
+  }
+
+  if (tooFast && inStrip(p)) damageAt(p);
+
+  coin.classList.toggle("hot", tooFast && overStrip);
+  if (tooFast && overStrip) {
+    warn.classList.add("show");
+    clearTimeout(warnTimer);
+    warnTimer = setTimeout(() => warn.classList.remove("show"), 500);
+    if (navigator.vibrate) navigator.vibrate(15);
+  }
+  Sound.scratch(overStrip ? Math.min(speed / 2, 1) : 0, tooFast);
+  last = p;
+}
+
+function damageAt(p) {
+  // Scratch off ink in small random blotches under the coin.
+  ink.save();
+  ink.globalCompositeOperation = "destination-out";
+  ink.globalAlpha = 0.55;
+  for (let k = 0; k < 2; k++) {
+    const x = p.x + (Math.random() - 0.5) * COIN_RADIUS * 1.4;
+    const y = p.y + (Math.random() - 0.5) * COIN_RADIUS * 1.4;
+    ink.beginPath(); ink.arc(x, y, 3 + Math.random() * 4, 0, Math.PI * 2); ink.fill();
+  }
+  ink.restore();
+  card.boxes.forEach((b, i) => {
+    if (p.x > b.x - 4 && p.x < b.x + b.w + 4) card.damage[i] += 1;
+  });
+}
+
+// ============================================================================
+// Phone / dialing
+// ============================================================================
+function buildKeypad() {
+  const keys = $("keys");
+  // Candybar layout: Call / Clear on top, then the classic 4x3 grid with letters.
+  const call = keyButton("call", "Call");
+  call.className = "call";
+  const clear = keyButton("⌫", "C  ⌫");
+  clear.className = "clear";
+  keys.append(call, clear);
+  const letters = { 1: "&nbsp;", 2: "abc", 3: "def", 4: "ghi", 5: "jkl", 6: "mno", 7: "pqrs", 8: "tuv", 9: "wxyz", 0: "␣", "*": "+", "#": "⇧" };
+  for (const k of ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]) {
+    keys.appendChild(keyButton(k, k, letters[k]));
+  }
+}
+
+function keyButton(key, label, sub) {
+  const b = document.createElement("button");
+  if (sub) b.innerHTML = `<span class="num">${label}</span><span class="sub">${sub}</span>`;
+  else b.textContent = label;
+  b.addEventListener("pointerdown", e => { e.preventDefault(); press(key); });
+  return b;
+}
+
+function press(key) {
+  if (!running || busy) return;
+  Sound.init();
+  if (key === "call") return submit();
+  if (key === "⌫") { typed = typed.slice(0, -1); renderDial(); return; }
+  if (typed.length >= DIAL_PREFIX.length + PIN_LENGTH + 4) return;
+  Sound.dtmf(key);
+  typed += key;
+  renderDial();
+}
+
+function renderDial() {
+  $("dial").innerHTML = `${typed}<span class="cursor">_</span>`;
+}
+
+function setMsg(text) { $("msg").textContent = text; }
+
+function submit() {
+  busy = true;
+  setMsg("USSD code running...");
+  const expected = `${DIAL_PREFIX}${card.pin}#`;
+  setTimeout(() => {
+    busy = false;
+    if (typed === expected) return cardDone();
+    Sound.error();
+    if (!typed.startsWith(DIAL_PREFIX)) setMsg("Invalid code.");
+    else if (!typed.endsWith("#")) setMsg("Invalid code. Forgot the # ?");
+    else {
+      card.wrong += 1;
+      penalty += WRONG_PIN_PENALTY;
+      setMsg(`Invalid PIN. Please try again. (+${WRONG_PIN_PENALTY}s)`);
+      typed = DIAL_PREFIX;
+      renderDial();
+    }
+  }, 900);
+}
+
+// Physical keyboard support (desktop).
+window.addEventListener("keydown", e => {
+  if (/^[0-9*#]$/.test(e.key)) press(e.key);
+  else if (e.key === "Backspace") press("⌫");
+  else if (e.key === "Enter") press("call");
+});
+
+// ============================================================================
+// Flow
+// ============================================================================
+function cardDone() {
+  Sound.success();
+  const total = elapsed();
+  const prevTotal = results.reduce((s, r) => s + r.time, 0);
+  const damaged = card.damage.filter(d => d >= 3).length;
+  results.push({ amount: card.level.amount, time: total - prevTotal, damaged, wrong: card.wrong });
+
+  showToast(`Recharge successful!<small>Your balance is Rs. ${card.level.amount}.00</small>`);
+  levelIndex += 1;
+  if (levelIndex < LEVELS.length) {
+    setTimeout(newCard, 1300);
+  } else {
+    elapsedBefore = total - penalty; running = false;
+    setTimeout(showResults, 1300);
+  }
+}
+
+function showToast(html) {
+  const t = $("toast");
+  t.innerHTML = html;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1200);
+}
+
+function summary() {
+  return {
+    time: results.reduce((s, r) => s + r.time, 0),
+    damaged: results.reduce((s, r) => s + r.damaged, 0),
+    wrong: results.reduce((s, r) => s + r.wrong, 0),
+  };
+}
+
+function showResults() {
+  const s = summary();
+  const rank = RANKS.find(r => r.test(s));
+  $("rankTitle").textContent = rank.title;
+  $("rankLine").textContent = rank.line;
+  const rows = results.map((r, i) =>
+    `<tr><td>Rs.${r.amount} card</td><td>${r.time.toFixed(1)}s${r.damaged ? ` (-${r.damaged})` : ""}</td></tr>`);
+  rows.push(`<tr><td>TOTAL</td><td>${s.time.toFixed(1)}s</td></tr>`);
+  rows.push(`<tr><td>Digits scratched off</td><td>${s.damaged}</td></tr>`);
+  rows.push(`<tr><td>Wrong PINs</td><td>${s.wrong}</td></tr>`);
+  $("resultTable").innerHTML = rows.join("");
+  $("resultScreen").hidden = false;
+}
+
+function shareText() {
+  const s = summary();
+  const rank = RANKS.find(r => r.test(s));
+  return `📱 रिचार्ज कार्ड: ${LEVELS.length} cards in ${s.time.toFixed(1)}s, ${s.damaged} digits scratched off.\n` +
+         `Rank: ${rank.title}\nCan you beat me?`;
+}
+
+$("shareBtn").addEventListener("click", async () => {
+  const text = shareText();
+  const url = location.href.split("#")[0];
+  try {
+    if (navigator.share) await navigator.share({ title: "Recharge Card", text, url });
+    else {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      $("shareBtn").textContent = "Copied!";
+      setTimeout(() => ($("shareBtn").textContent = "Share"), 1500);
+    }
+  } catch (_) { /* share cancelled */ }
+});
+
+function startGame() {
+  Sound.init();
+  levelIndex = 0; results = []; penalty = 0; elapsedBefore = 0;
+  $("startScreen").hidden = true;
+  $("resultScreen").hidden = true;
+  newCard();
+  startTime = now(); running = true;
+}
+
+$("startBtn").addEventListener("click", startGame);
+$("againBtn").addEventListener("click", startGame);
+$("mute").addEventListener("click", () => {
+  Sound.muted = !Sound.muted;
+  $("mute").textContent = Sound.muted ? "🔇" : "🔊";
+  if (Sound.muted) Sound.scratch(0, false);
+});
+
+buildKeypad();
+$("operator").textContent = OPERATOR_SHORT;
+document.fonts.ready.then(() => { newCard(); tick(); });
+</script>
+</body>
+</html>
