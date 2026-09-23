@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Morning Assembly</title>
+  <meta name="description" content="सावधान! विश्राम! Survive morning assembly without PT sir catching you.">
+  <meta name="theme-color" content="#ffd21a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Baloo+2:wght@600;800&family=Mukta:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* Same signboard system as the other games; the scene is the school courtyard. */
+    :root {
+      --ink: #10212b;
+      --muted: #3f5a67;
+      --sign: #ffd21a;
+      --sign-red: #d4001a;
+      --sign-black: #141414;
+      --paper: #fffdf6;
+      --sky: #a9d6ea;
+    }
+    * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--sky);
+      color: var(--ink);
+      font-family: "Mukta", system-ui, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
+    .shop { height: 100dvh; display: flex; flex-direction: column; }
+
+    /* --- signboard ----------------------------------------------------- */
+    .sign {
+      background: var(--sign);
+      border-bottom: 6px solid var(--sign-red);
+      box-shadow: 0 4px 0 rgba(0, 0, 0, .12);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: max(10px, env(safe-area-inset-top)) 16px 8px;
+      position: relative; z-index: 2;
+    }
+    .sign .back { color: var(--sign-black); font-weight: 800; text-decoration: none; font-size: .95rem; }
+    .sign .board { text-align: center; line-height: 1.2; }
+    .sign .np {
+      display: block;
+      font-family: "Yatra One", "Mukta", sans-serif;
+      color: var(--sign-red);
+      font-size: clamp(1.4rem, 5.5vw, 2.4rem);
+      text-shadow: 1px 1px 0 rgba(0, 0, 0, .15);
+    }
+    .sign .en {
+      display: block;
+      font-family: "Baloo 2", sans-serif; font-weight: 800;
+      color: var(--sign-black);
+      font-size: clamp(.62rem, 2.3vw, .9rem);
+      letter-spacing: .12em; text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .sign .tools { justify-self: end; display: flex; gap: 8px; }
+    .sign .round {
+      background: var(--sign-black); color: var(--sign);
+      border: 0; border-radius: 999px;
+      width: 36px; height: 36px; font-size: 1rem; cursor: pointer;
+    }
+
+    /* --- stage --------------------------------------------------------- */
+    .stage { position: relative; flex: 1; min-height: 0; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+    .stage::after {
+      /* red edge glow while PT sir is watching you */
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      box-shadow: inset 0 0 0 0 rgba(212, 0, 26, 0);
+      transition: box-shadow .2s;
+    }
+    .stage.watched::after { box-shadow: inset 0 0 60px 14px rgba(212, 0, 26, .45); }
+    .hud {
+      position: absolute; left: 0; right: 0; top: 10px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      padding: 0 16px; pointer-events: none;
+    }
+    .chip {
+      font-family: "Baloo 2", sans-serif; font-weight: 800;
+      background: var(--sign-black); color: var(--sign);
+      padding: 2px 12px; border-radius: 8px; font-size: 1rem; white-space: nowrap;
+    }
+    .progress {
+      flex: 1; max-width: 360px; height: 12px;
+      background: rgba(20, 20, 20, .35); border: 2px solid var(--sign-black); border-radius: 999px; overflow: hidden;
+    }
+    .progress i { display: block; height: 100%; width: 0%; background: var(--sign); }
+    .command {
+      position: absolute; left: 50%; top: 52px;
+      transform: translateX(-50%) scale(.8);
+      font-family: "Yatra One", sans-serif;
+      font-size: clamp(2.4rem, 9vh, 4.8rem);
+      line-height: 1.1;
+      color: #fff;
+      -webkit-text-stroke: 3px var(--sign-black);
+      paint-order: stroke fill;
+      text-shadow: 4px 4px 0 var(--sign-black);
+      opacity: 0; transition: opacity .15s, transform .15s;
+      pointer-events: none; white-space: nowrap;
+    }
+    .command.show { opacity: 1; transform: translateX(-50%) scale(1); }
+    .command.att { color: var(--sign); }
+    .scold {
+      position: absolute; left: 50%; top: 40%;
+      transform: translate(-50%, -50%) scale(.8);
+      background: var(--sign-red); color: #fff;
+      font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 1.4rem;
+      padding: 6px 18px; border-radius: 12px; border: 3px solid var(--sign-black);
+      opacity: 0; transition: opacity .15s, transform .15s; pointer-events: none; white-space: nowrap;
+    }
+    .scold.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+    /* --- overlays ------------------------------------------------------ */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(16, 33, 43, .5);
+      backdrop-filter: blur(3px);
+      display: grid; place-items: center;
+      padding: 16px;
+      z-index: 10;
+      touch-action: manipulation;
+      overflow-y: auto;
+    }
+    .overlay[hidden] { display: none; }
+    .signpanel {
+      width: 100%; max-width: 440px;
+      background: var(--sign);
+      border: 6px solid var(--sign-red);
+      outline: 3px solid var(--sign-black);
+      border-radius: 10px;
+      padding: 20px 22px 20px;
+      text-align: center;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+    }
+    .signpanel h1 {
+      font-family: "Yatra One", sans-serif; font-weight: 400;
+      color: var(--sign-red); font-size: 3rem; line-height: 1.05;
+    }
+    .signpanel h2 { font-family: "Yatra One", sans-serif; font-weight: 400; color: var(--sign-red); font-size: 2.1rem; line-height: 1.15; }
+    .signpanel .sub { font-family: "Baloo 2", sans-serif; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: .85rem; }
+    .signpanel ol { text-align: left; margin: 12px 0 4px; padding-left: 1.3em; font-weight: 600; }
+    .signpanel li { margin: 5px 0; }
+    .signpanel .note { font-weight: 600; margin-top: 6px; }
+    .signpanel .line { margin-top: 4px; }
+    .stats { list-style: none; padding: 0; margin: 12px 0 0; text-align: left; }
+    .stats li {
+      display: flex; justify-content: space-between;
+      background: var(--paper); border: 2px solid var(--sign-black);
+      border-radius: 8px; padding: 5px 12px; margin: 6px 0; font-weight: 800;
+    }
+    .btn {
+      display: block; width: 100%;
+      margin-top: 12px; padding: 12px;
+      border: 0; border-radius: 10px;
+      background: var(--sign-red); color: #fff;
+      font: 800 1.2rem "Baloo 2", sans-serif;
+      cursor: pointer;
+      box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25);
+    }
+    .btn:active { box-shadow: none; transform: translateY(2px); }
+    .btn.secondary { background: var(--sign-black); color: var(--sign); }
+    .signpanel.guide { max-width: 520px; max-height: calc(100dvh - 32px); overflow-y: auto; text-align: left; }
+    .guide h2 { text-align: center; }
+    .guide .sub { text-align: center; }
+    .step {
+      display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center;
+      background: var(--paper); border: 2px solid var(--sign-black); border-radius: 10px;
+      padding: 10px 12px; margin-top: 10px;
+    }
+    .step .pic { display: grid; place-items: center; min-height: 56px; }
+    .step b.cmd { font-family: "Yatra One", sans-serif; font-weight: 400; font-size: 1.25rem; color: var(--sign-red); }
+    .step p { margin: 2px 0 0; font-size: .95rem; line-height: 1.35; }
+    .step h3 { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 1.05rem; line-height: 1.2; }
+    .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .keys div { background: var(--sign-black); color: var(--sign); border-radius: 10px; padding: 8px 12px; font-size: .9rem; }
+    .keys b { display: block; font-family: "Baloo 2", sans-serif; }
+    .control-pick { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; font-weight: 800; flex-wrap: wrap; }
+    .control-pick button {
+      border: 3px solid var(--sign-black); background: var(--paper); color: var(--ink);
+      border-radius: 999px; padding: 4px 12px; font: 800 .95rem "Baloo 2", sans-serif; cursor: pointer;
+    }
+    .control-pick button.on { background: var(--sign-black); color: var(--sign); }
+    .control-pick[hidden] { display: none; }
+    .scold.info { background: var(--sign-black); color: var(--sign); font-size: 1.05rem; white-space: normal; text-align: center; width: max-content; max-width: 90%; }
+    .text-link {
+      display: block; width: 100%; margin-top: 10px; background: none; border: 0; cursor: pointer;
+      font: 800 1.05rem "Baloo 2", sans-serif; color: var(--sign-black); text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<div class="shop">
+  <header class="sign">
+    <a class="back" href="../../index.html">← खेलहरू</a>
+    <div class="board">
+      <span class="np">प्रार्थना</span>
+      <span class="en">Morning assembly</span>
+    </div>
+    <div class="tools">
+      <button class="round" id="helpBtn" aria-label="How to play">?</button>
+      <button class="round" id="mute" aria-label="Toggle sound">🔊</button>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="canvas"></canvas>
+    <div class="hud">
+      <span class="chip" id="strikes">गल्ती ०/३</span>
+      <div class="progress"><i id="progress"></i></div>
+      <span class="chip" id="clock">१:१५</span>
+    </div>
+    <div class="command" id="command"></div>
+    <div class="scold" id="scold"></div>
+  </div>
+</div>
+
+<div class="overlay" id="startScreen">
+  <div class="signpanel">
+    <h1>प्रार्थना</h1>
+    <div class="sub">Morning Assembly</div>
+    <p class="note"><b>सावधान!</b> → hold. <b>विश्राम!</b> → let go.<br>Don't sway while PT sir is watching. Survive till the bell!</p>
+    <div class="control-pick" id="controlPick" hidden>
+      <span>Balance by</span>
+      <button data-control="tilt">📱 Tilt</button>
+      <button data-control="slide">👆 Slide</button>
+    </div>
+    <button class="btn" id="startBtn">लाइनमा बस · Line up</button>
+    <button class="text-link" id="howBtn">कसरी खेल्ने? · How to play</button>
+  </div>
+</div>
+
+<div class="overlay" id="howScreen" hidden>
+  <div class="signpanel guide">
+    <h2>कसरी खेल्ने?</h2>
+    <div class="sub">How to play</div>
+
+    <div class="step">
+      <div class="pic"><svg width="64" height="56" viewBox="0 0 64 56"><circle cx="32" cy="22" r="14" fill="#d4001a" opacity=".25"/><circle cx="32" cy="22" r="7" fill="#d4001a"/><path d="M26 30 v16 a6 6 0 0 0 12 0 v-16" fill="#e0ac7d" stroke="#141414" stroke-width="2.5"/></svg></div>
+      <div><h3><b class="cmd">सावधान!</b> · Attention</h3><p>When PT sir shouts this, <b>press and hold</b> anywhere on the screen. You stand straight with your arms at your sides.</p></div>
+    </div>
+
+    <div class="step">
+      <div class="pic"><svg width="64" height="56" viewBox="0 0 64 56"><path d="M26 34 v14 a6 6 0 0 0 12 0 v-14" fill="#e0ac7d" stroke="#141414" stroke-width="2.5"/><path d="M32 6 v14 M24 13 l8 -8 l8 8" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><h3><b class="cmd">विश्राम!</b> · At ease</h3><p><b>Let go.</b> You stand relaxed with your hands behind your back. You get about a second to react, less as the assembly goes on.</p></div>
+    </div>
+
+    <div class="step">
+      <div class="pic"><svg width="72" height="28" viewBox="0 0 72 28"><rect x="1" y="4" width="70" height="20" rx="10" fill="#141414"/><rect x="5" y="9" width="14" height="10" fill="#d4001a"/><rect x="19" y="9" width="10" height="10" fill="#f2b33d"/><rect x="29" y="9" width="14" height="10" fill="#3fae5a"/><rect x="43" y="9" width="10" height="10" fill="#f2b33d"/><rect x="53" y="9" width="14" height="10" fill="#d4001a"/><circle cx="41" cy="14" r="7" fill="#fff" stroke="#141414" stroke-width="2.5"/></svg></div>
+      <div><h3>Stay balanced · सन्तुलन</h3><p>At attention the hot sun makes you sway. <b>Tilt your phone the way you want the bead to roll</b> to bring it back to the <b>green</b>. The angle you hold the phone at when you press down counts as level. (Chose <b>Slide</b> on the start screen? Slide your finger instead.) If the bead hits the red end, you faint.</p></div>
+    </div>
+
+    <div class="step">
+      <div class="pic"><svg width="64" height="56" viewBox="0 0 64 56"><circle cx="18" cy="28" r="14" fill="#ffd21a" stroke="#141414" stroke-width="3"/><text x="18" y="35" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="20">!</text><ellipse cx="48" cy="28" rx="14" ry="9" fill="#fff" stroke="#141414" stroke-width="2.5"/><circle cx="50" cy="28" r="5" fill="#d4001a"/></svg></div>
+      <div><h3>Watch PT sir</h3><p>A yellow <b>!</b> means he's about to turn around (sometimes he's bluffing). A <b>red eye</b> and red glow mean he's watching you. <b>He only scolds what he sees:</b> the wrong pose, or swaying out of the green.</p></div>
+    </div>
+
+    <div class="step">
+      <div class="pic"><svg width="64" height="56" viewBox="0 0 64 56"><ellipse cx="26" cy="20" rx="9" ry="5" fill="#fff" stroke="#141414" stroke-width="1.5" transform="rotate(-25 26 20)"/><ellipse cx="38" cy="20" rx="9" ry="5" fill="#fff" stroke="#141414" stroke-width="1.5" transform="rotate(25 38 20)"/><ellipse cx="32" cy="30" rx="7" ry="10" fill="#141414"/></svg></div>
+      <div><h3>Sneak a rest</h3><p>When he's looking away you can let go and rest, <b>even during सावधान!</b> Just be holding again before he turns. Watch out for the <b>fly on your nose</b> and the <b>poke from the kid next to you</b>: both make you wobble.</p></div>
+    </div>
+
+    <div class="step">
+      <div class="pic"><svg width="64" height="56" viewBox="0 0 64 56"><path d="M32 8 a14 14 0 0 1 14 14 v10 l5 7 h-38 l5 -7 v-10 a14 14 0 0 1 14 -14z" fill="#f2b33d" stroke="#141414" stroke-width="2.5"/><circle cx="32" cy="44" r="5" fill="#141414"/></svg></div>
+      <div><h3>Win and lose</h3><p>Last until <b>the bell</b> (about a minute and a quarter). <b>3 scoldings</b> and it's <b>कान समातेर उठबस</b>. Stay still while watched to be made <b>मनिटर!</b></p></div>
+    </div>
+
+    <div class="keys">
+      <div><b>📱 Phone</b>Hold a finger down, tilt the phone to balance (or slide, if you picked Slide)</div>
+      <div><b>💻 Laptop</b>Hold Space, ← / → to balance (or hold the mouse and drag)</div>
+    </div>
+
+    <button class="btn" id="howClose">बुझें! · Got it</button>
+  </div>
+</div>
+
+<div class="overlay" id="resultScreen" hidden>
+  <div class="signpanel">
+    <h2 id="resultTitle"></h2>
+    <p class="line" id="resultLine"></p>
+    <ul class="stats" id="stats"></ul>
+    <button class="btn" id="shareBtn">Share</button>
+    <button class="btn secondary" id="againBtn">फेरि · Again</button>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// Design knobs -- tweak these first. World is 1000 units tall; width follows the screen.
+// ============================================================================
+const ASSEMBLY_SECONDS = 75;       // survive this long to hear the bell
+const MAX_STRIKES = 3;
+const REACT_START = 1.0;           // seconds to obey a command at the start...
+const REACT_END = 0.6;             // ...shrinking to this by the end
+const COMMAND_GAP = [6, 11];       // seconds between commands
+const AWAY_TIME = [2.2, 5];        // PT sir looks away this long (shrinks as assembly goes on)
+const WATCH_TIME = [1.4, 3.2];     // then watches you this long
+const TURN_WARNING = 0.55;         // "!" warning before he turns to look
+const BLUFF_CHANCE = 0.2;          // sometimes the "!" is a bluff and he doesn't turn
+const CAUGHT_TILT = 0.45;          // sway beyond this while watched = scolded (1.0 = faint)
+const INSTABILITY = 0.9;           // how fast an uncorrected sway grows
+const DAMPING = 1.7;
+const CONTROL = 5.5;               // how strongly your finger pushes you upright
+const SWAY_NOISE = [0.55, 1.8];     // sun sway strength, start -> end of assembly
+const DRAG_RANGE = 0.16;           // Slide control: fraction of screen width = a full push
+const TILT_RANGE = 14;             // Tilt control: degrees of phone tilt = a full push
+const SCHOOL_NAME = "श्री सजिलो माध्यमिक विद्यालय";
+const SCOLDS = {
+  att: "ए! सावधान भनेको सुनिनस्?",
+  ease: "विश्राम भनेको!",
+  wobble: "सिधा उभ!",
+};
+const SKIN = ["#8d5a3b", "#a86b45", "#c68a5e", "#e0ac7d", "#b97a52"];
+
+const $ = id => document.getElementById(id);
+const toNep = n => String(n).replace(/\d/g, d => "०१२३४५६७८९"[d]);
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// ============================================================================
+// Sound: whistle, original march loop, fly buzz, scold buzzer, school bell
+// ============================================================================
+const Sound = {
+  ctx: null, muted: false, musicTimer: 0, buzz: null,
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+  },
+  tone(f0, f1, dur, vol, type = "sine", delay = 0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime + delay;
+    const o = this.ctx.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + dur);
+  },
+  whistle(long) {
+    if (!this.ctx || this.muted) return;
+    // PT sir's whistle: a trilling high tone
+    const t = this.ctx.currentTime, dur = long ? 0.55 : 0.3;
+    const o = this.ctx.createOscillator(); o.type = "sine"; o.frequency.value = 2900;
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 38;
+    const lg = this.ctx.createGain(); lg.gain.value = 160;
+    lfo.connect(lg).connect(o.frequency);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.03);
+    g.gain.setValueAtTime(0.12, t + dur - 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(this.ctx.destination);
+    o.start(t); lfo.start(t); o.stop(t + dur); lfo.stop(t + dur);
+  },
+  scold() { this.tone(160, 120, 0.35, 0.18, "square"); },
+  bell() { for (let i = 0; i < 6; i++) this.tone(1480, 1400, 0.2, 0.09, "triangle", i * 0.22); },
+  startMusic() {
+    // An original, simple march-style loop (not the national anthem).
+    this.stopMusic();
+    if (!this.ctx) return;
+    const notes = [523, 659, 784, 659, 698, 880, 1047, 880, 784, 988, 1175, 988, 1047, 784, 659, 523];
+    let i = 0;
+    const beat = 0.42;
+    const step = () => {
+      if (!this.muted) {
+        this.tone(notes[i % notes.length], notes[i % notes.length] * 0.999, beat * 0.9, 0.035, "triangle");
+        if (i % 2 === 0) this.tone(notes[i % notes.length] / 4, notes[i % notes.length] / 4.2, 0.18, 0.05, "sine");
+      }
+      i++;
+    };
+    step();
+    this.musicTimer = setInterval(step, beat * 1000);
+  },
+  stopMusic() { clearInterval(this.musicTimer); },
+  buzzOn() {
+    if (!this.ctx || this.muted || this.buzz) return;
+    const o = this.ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = 190;
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 11;
+    const lg = this.ctx.createGain(); lg.gain.value = 25;
+    lfo.connect(lg).connect(o.frequency);
+    const g = this.ctx.createGain(); g.gain.value = 0.018;
+    o.connect(g).connect(this.ctx.destination); o.start(); lfo.start();
+    this.buzz = { o, lfo };
+  },
+  buzzOff() {
+    if (!this.buzz) return;
+    this.buzz.o.stop(); this.buzz.lfo.stop(); this.buzz = null;
+  },
+};
+
+// ============================================================================
+// Canvas + scene
+// ============================================================================
+const canvas = $("canvas"), ctx = canvas.getContext("2d");
+const bg = document.createElement("canvas"), bgc = bg.getContext("2d");
+let scale = 1, dpr = 1, W = 600;
+let rows = [];   // background classmates
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  scale = r.height / 1000;
+  W = r.width / scale;
+  for (const c of [canvas, bg]) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  bgc.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  buildRows();
+  drawBackground();
+}
+window.addEventListener("resize", resize);
+
+function buildRows() {
+  // Three lines of classmates; you are dead centre of the front line.
+  rows = [];
+  for (const [y, s, gap] of [[560, 0.5, 78], [665, 0.7, 108], [840, 1.0, 150]]) {
+    const n = Math.ceil(W / 2 / gap) + 1;
+    for (let k = -n; k <= n; k++) {
+      const front = s === 1.0;
+      if (front && k === 0) continue;   // that's you
+      rows.push({
+        x: W / 2 + k * gap + (front ? 0 : (s === 0.7 ? gap / 2 : 0)),
+        y, s,
+        skin: SKIN[Math.floor(Math.random() * SKIN.length)],
+        girl: Math.random() < 0.5,
+        pose: "ease", delay: rand(0.05, 0.6), lazy: Math.random() < 0.12,
+        sway: rand(0, 6), poke: front && Math.abs(k) === 1,
+      });
+    }
+  }
+  rows.sort((a, b) => a.y - b.y);
+}
+
+function drawBackground() {
+  const c = bgc;
+  const sky = c.createLinearGradient(0, 0, 0, 430);
+  sky.addColorStop(0, "#8fcbe6"); sky.addColorStop(1, "#e6f4f7");
+  c.fillStyle = sky; c.fillRect(0, 0, W, 430);
+
+  // School building
+  const top = 150, base = 430;
+  c.fillStyle = "#8e2b2b"; c.fillRect(0, top - 18, W, 22);          // roof edge
+  c.fillStyle = "#f1e3b8"; c.fillRect(0, top, W, base - top);        // cream wall
+  c.fillStyle = "#e2cf98"; c.fillRect(0, 285, W, 10);                // floor band
+  for (const wy of [178, 318]) {
+    for (let x = 30; x < W - 40; x += 110) {
+      c.fillStyle = "#2f5d8a"; c.fillRect(x, wy, 70, 80);
+      c.fillStyle = "#9cc3e0"; c.fillRect(x + 6, wy + 6, 58, 68);
+      c.fillStyle = "#2f5d8a"; c.fillRect(x + 33, wy + 6, 4, 68); c.fillRect(x + 6, wy + 38, 58, 4);
+    }
+  }
+  // Name board
+  c.textAlign = "center"; c.textBaseline = "middle";
+  let size = 40;
+  c.font = `${size}px "Yatra One", sans-serif`;
+  const tw = c.measureText(SCHOOL_NAME).width;
+  if (tw > W * 0.8) { size *= (W * 0.8) / tw; c.font = `${size}px "Yatra One", sans-serif`; }
+  const bw = c.measureText(SCHOOL_NAME).width + 40;
+  c.fillStyle = "#1d4e89"; c.fillRect(W / 2 - bw / 2, top + 8, bw, size + 20);
+  c.fillStyle = "#fff"; c.fillText(SCHOOL_NAME, W / 2, top + 8 + (size + 20) / 2 + 2);
+
+  // Courtyard
+  const g = c.createLinearGradient(0, base, 0, 1000);
+  g.addColorStop(0, "#cdb385"); g.addColorStop(1, "#dcc294");
+  c.fillStyle = g; c.fillRect(0, base, W, 1000 - base);
+  c.fillStyle = "rgba(0,0,0,.12)"; c.fillRect(0, base, W, 6);
+  c.fillStyle = "rgba(120, 84, 44, .3)";
+  for (let i = 0; i < W / 2; i++) c.fillRect((i * 97.3) % W, base + 10 + ((i * 53) % (990 - base)), 3, 3);
+}
+
+// --- characters ------------------------------------------------------------
+function drawStudent(x, y, s, o) {
+  // Feet at (x, y). o: { skin, girl, pose: "att"|"ease", tilt, you, fly, flyT }
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(o.tilt || 0);
+  ctx.scale(s, s);
+  const att = o.pose === "att";
+  const legX = att ? 13 : 24;
+
+  // shadow
+  ctx.fillStyle = "rgba(60, 40, 20, .25)";
+  ctx.beginPath(); ctx.ellipse(0, 4, 50, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+  // arms behind the back at ease (drawn before the body)
+  const shirt = "#9fd0f0", navy = "#1f3557";
+  if (!att) {
+    ctx.strokeStyle = shirt; ctx.lineWidth = 16; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-40, -250); ctx.lineTo(-30, -185); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(40, -250); ctx.lineTo(30, -185); ctx.stroke();
+  }
+  // legs + shoes
+  if (o.girl) {
+    ctx.fillStyle = o.skin;
+    ctx.fillRect(-legX - 8, -125, 15, 110); ctx.fillRect(legX - 7, -125, 15, 110);
+    ctx.fillStyle = "#f4f4f4";
+    ctx.fillRect(-legX - 9, -60, 17, 50); ctx.fillRect(legX - 8, -60, 17, 50);
+  } else {
+    ctx.fillStyle = navy;
+    ctx.beginPath(); ctx.moveTo(-36, -160); ctx.lineTo(36, -160); ctx.lineTo(legX + 11, -10); ctx.lineTo(legX - 9, -10);
+    ctx.lineTo(0, -120); ctx.lineTo(-legX + 9, -10); ctx.lineTo(-legX - 11, -10); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = "#111";
+  ctx.beginPath(); ctx.ellipse(-legX - 4, -6, 17, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(legX + 4, -6, 17, 9, 0, 0, Math.PI * 2); ctx.fill();
+  // skirt
+  if (o.girl) {
+    ctx.fillStyle = navy;
+    ctx.beginPath(); ctx.moveTo(-36, -165); ctx.lineTo(36, -165); ctx.lineTo(50, -110); ctx.lineTo(-50, -110); ctx.closePath(); ctx.fill();
+  }
+  // shirt + tie + belt
+  ctx.fillStyle = shirt;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-40, -268, 80, 110, 14) : ctx.rect(-40, -268, 80, 110); ctx.fill();
+  ctx.fillStyle = "#b3122e";
+  ctx.beginPath(); ctx.moveTo(-7, -262); ctx.lineTo(7, -262); ctx.lineTo(10, -205); ctx.lineTo(0, -192); ctx.lineTo(-10, -205); ctx.closePath(); ctx.fill();
+  if (!o.girl) { ctx.fillStyle = "#222"; ctx.fillRect(-40, -166, 80, 8); }
+  // arms straight at the sides at attention
+  if (att) {
+    ctx.fillStyle = shirt;
+    ctx.fillRect(-54, -262, 16, 50); ctx.fillRect(38, -262, 16, 50);
+    ctx.fillStyle = o.skin;
+    ctx.fillRect(-52, -214, 12, 62); ctx.fillRect(40, -214, 12, 62);
+    ctx.beginPath(); ctx.arc(-46, -150, 8, 0, Math.PI * 2); ctx.arc(46, -150, 8, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.fillStyle = shirt;
+    ctx.fillRect(-52, -262, 14, 40); ctx.fillRect(38, -262, 14, 40);
+  }
+  // neck + head
+  ctx.fillStyle = o.skin;
+  ctx.fillRect(-9, -284, 18, 20);
+  ctx.beginPath(); ctx.arc(0, -312, 34, 0, Math.PI * 2); ctx.fill();
+  // hair
+  ctx.fillStyle = "#141414";
+  if (o.girl) {
+    ctx.beginPath(); ctx.arc(0, -318, 36, Math.PI, 0); ctx.fill();
+    ctx.fillRect(-36, -320, 8, 20); ctx.fillRect(28, -320, 8, 20);
+    // two plaits with red ribbons
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = "#141414";
+      ctx.beginPath(); ctx.ellipse(sx * 40, -268, 9, 32, sx * -0.15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#d4001a";
+      ctx.beginPath(); ctx.arc(sx * 42, -236, 8, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    ctx.beginPath(); ctx.arc(0, -320, 36, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    ctx.fillRect(-35, -330, 70, 12);
+  }
+  // face
+  ctx.fillStyle = "#141414";
+  const squint = o.you && o.squint;
+  if (squint) {
+    ctx.fillRect(-15, -314, 10, 3); ctx.fillRect(5, -314, 10, 3);
+  } else {
+    ctx.beginPath(); ctx.arc(-11, -313, 3.5, 0, Math.PI * 2); ctx.arc(11, -313, 3.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillRect(-7, -294, 14, 3);
+  // sweat when it's hot
+  if (o.sweat) {
+    ctx.fillStyle = "rgba(120, 200, 255, .9)";
+    ctx.beginPath(); ctx.ellipse(28, -330 + (o.sweat * 30) % 30, 4, 7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // fly on the nose
+  if (o.fly) drawFly(0 + Math.sin(o.flyT * 30) * 2, -305);
+  ctx.restore();
+}
+
+function drawFly(x, y) {
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.beginPath(); ctx.ellipse(x - 5, y - 6, 6, 3.5, -0.5, 0, Math.PI * 2); ctx.ellipse(x + 5, y - 6, 6, 3.5, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#111";
+  ctx.beginPath(); ctx.ellipse(x, y, 5, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawTeacher(x, y, s, watching, walkT) {
+  // PT sir in a red tracksuit. Watching = turned toward the lines (back to us).
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  const suit = "#c8102e", stripe = "#fff";
+  const step = Math.sin(walkT * 9) * 8;
+  ctx.fillStyle = "rgba(60, 40, 20, .3)";
+  ctx.beginPath(); ctx.ellipse(0, 4, 60, 12, 0, 0, Math.PI * 2); ctx.fill();
+  // legs
+  ctx.fillStyle = suit;
+  ctx.fillRect(-32, -170, 26, 162 + step * 0.3); ctx.fillRect(6, -170, 26, 162 - step * 0.3);
+  ctx.fillStyle = stripe; ctx.fillRect(-32, -170, 5, 160); ctx.fillRect(27, -170, 5, 160);
+  ctx.fillStyle = "#f4f4f4";
+  ctx.beginPath(); ctx.ellipse(-20, -6, 22, 10, 0, 0, Math.PI * 2); ctx.ellipse(20, -6, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
+  // body
+  ctx.fillStyle = suit;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-46, -300, 92, 140, 18) : ctx.rect(-46, -300, 92, 140); ctx.fill();
+  if (watching) {
+    // hands on hips
+    ctx.strokeStyle = suit; ctx.lineWidth = 20; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-44, -285); ctx.lineTo(-72, -230); ctx.lineTo(-44, -190); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(44, -285); ctx.lineTo(72, -230); ctx.lineTo(44, -190); ctx.stroke();
+    ctx.fillStyle = stripe; ctx.fillRect(-4, -298, 8, 136);   // back seam stripe
+  } else {
+    // arms down holding the attendance register
+    ctx.strokeStyle = suit; ctx.lineWidth = 20; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-44, -285); ctx.lineTo(-40, -210); ctx.lineTo(-10, -200); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(44, -285); ctx.lineTo(40, -210); ctx.lineTo(10, -200); ctx.stroke();
+    ctx.fillStyle = "#1d4e89"; ctx.fillRect(-30, -232, 60, 44);
+    ctx.fillStyle = "#fff"; ctx.fillRect(-26, -228, 52, 36);
+    // zip + whistle on a string
+    ctx.fillStyle = stripe; ctx.fillRect(-2, -298, 4, 136);
+    ctx.strokeStyle = "#f2f2f2"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-14, -300); ctx.lineTo(0, -262); ctx.lineTo(14, -300); ctx.stroke();
+    ctx.fillStyle = "#d4a017"; ctx.fillRect(-7, -266, 14, 9);
+  }
+  // head
+  ctx.fillStyle = "#a86b45";
+  ctx.fillRect(-11, -322, 22, 26);
+  ctx.beginPath(); ctx.arc(0, -350, 38, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#141414";
+  if (watching) {
+    ctx.beginPath(); ctx.arc(0, -352, 39, 0, Math.PI * 2); ctx.fill();         // back of the head
+  } else {
+    ctx.beginPath(); ctx.arc(0, -360, 39, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    ctx.beginPath(); ctx.arc(-12, -350, 3.5, 0, Math.PI * 2); ctx.arc(12, -350, 3.5, 0, Math.PI * 2); ctx.fill();
+    // the moustache
+    ctx.beginPath(); ctx.ellipse(-10, -334, 13, 5, 0.2, 0, Math.PI * 2); ctx.ellipse(10, -334, 13, 5, -0.2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ============================================================================
+// Game state
+// ============================================================================
+let g = null;             // current game
+let paused = false;       // true while the how-to guide is open mid-game
+let holding = false, dragU = 0, keyU = 0, anchorX = 0, keysDown = new Set();
+
+function newGame() {
+  g = {
+    t: 0, over: false,
+    cmd: "ease", cmdAt: -10, nextCmd: 2.0, commandText: "",
+    theta: 0, omega: 0, noise: 0,
+    strikes: 0, grace: 0,
+    teacher: { state: "away", until: rand(...AWAY_TIME), side: 1, x: W * 0.88, targetX: W * 0.88, walkT: 0, bluff: false },
+    fly: { on: false, until: 0, next: rand(12, 20), x: 0, y: 0 },
+    poke: { t: -1, side: 1, next: rand(18, 28) },
+    watchedTime: 0, steadyTime: 0, fainted: false, faintT: 0,
+  };
+  for (const r of rows) r.pose = "ease";
+  updateStrikes();
+}
+
+function progress() { return clamp(g.t / ASSEMBLY_SECONDS, 0, 1); }
+function reactWindow() { return lerp(REACT_START, REACT_END, progress()); }
+
+function watching() { return g.teacher.state === "watch"; }
+function youPose() { return holding ? "att" : "ease"; }
+
+function issueCommand() {
+  g.cmd = g.cmd === "att" ? "ease" : "att";
+  g.cmdAt = g.t;
+  g.nextCmd = g.t + rand(...COMMAND_GAP);
+  const el = $("command");
+  el.textContent = g.cmd === "att" ? "सावधान!" : "विश्राम!";
+  el.className = `command show ${g.cmd}`;
+  setTimeout(() => el.classList.remove("show"), 1300);
+  Sound.whistle(g.cmd === "att");
+  // After shouting, PT sir checks that everyone obeyed.
+  const t = g.teacher;
+  t.state = "turning"; t.bluff = false; t.until = g.t + reactWindow();
+  for (const r of rows) r.switchAt = g.t + r.delay + (r.lazy ? 0.8 : 0);
+}
+
+function strike(reason) {
+  if (g.grace > 0 || g.over) return;
+  g.strikes += 1;
+  g.grace = 1.6;
+  g.theta *= 0.3; g.omega = 0;
+  updateStrikes();
+  Sound.scold();
+  if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+  const el = $("scold");
+  el.textContent = SCOLDS[reason];
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 1100);
+  if (g.strikes >= MAX_STRIKES) endGame("strikes");
+}
+
+function updateStrikes() { $("strikes").textContent = `गल्ती ${toNep(g ? g.strikes : 0)}/${toNep(MAX_STRIKES)}`; }
+
+function updateTeacher(dt) {
+  const t = g.teacher;
+  t.walkT += Math.abs(t.targetX - t.x) > 2 ? dt : 0;
+  t.x += clamp(t.targetX - t.x, -260 * dt, 260 * dt);
+  if (g.t < t.until) return;
+  const p = progress();
+  if (t.state === "away") {
+    t.state = "warn"; t.bluff = Math.random() < BLUFF_CHANCE; t.until = g.t + TURN_WARNING;
+  } else if (t.state === "warn" || t.state === "turning") {
+    if (t.bluff) { t.state = "away"; t.until = g.t + rand(1, 2); }
+    else { t.state = "watch"; t.until = g.t + rand(...WATCH_TIME); }
+  } else if (t.state === "watch") {
+    t.state = "away";
+    t.until = g.t + rand(AWAY_TIME[0], lerp(AWAY_TIME[1], AWAY_TIME[0] + 0.5, p));
+    // sometimes stroll to the other side of the lines
+    if (Math.random() < 0.35) { t.side *= -1; t.targetX = t.side > 0 ? W * 0.88 : W * 0.12; }
+  }
+}
+
+function update(dt) {
+  if (!g) return;
+  // classmates follow the command, a little late (and one or two very late)
+  for (const r of rows) if (r.switchAt && g.t >= r.switchAt) { r.pose = g.cmd; r.switchAt = 0; }
+  if (g.over) {
+    if (g.fainted) g.faintT = Math.min(g.faintT + dt * 1.6, 1);
+    return;
+  }
+  g.t += dt;
+  g.grace = Math.max(0, g.grace - dt);
+  if (g.t >= g.nextCmd) issueCommand();
+  updateTeacher(dt);
+
+  // --- balance: an unstable sway you correct by sliding your finger ---
+  const p = progress();
+  const u = clamp(dragU + tiltU() + keyU, -1, 1);
+  // smooth random push from the heat (Ornstein-Uhlenbeck noise)
+  g.noise += (-g.noise * 1.5) * dt + rand(-1, 1) * Math.sqrt(dt) * 3.2;
+  if (holding) {
+    let push = g.noise * lerp(SWAY_NOISE[0], SWAY_NOISE[1], p);
+    if (g.fly.on) push += Math.sin(g.t * 13) * 1.6 + rand(-1, 1) * 1.2;
+    g.omega += (INSTABILITY * g.theta + push + CONTROL * u - DAMPING * g.omega) * dt;
+  } else {
+    g.omega += (-6 * g.theta - 4 * g.omega) * dt;        // relaxed: settle upright
+  }
+  g.theta += g.omega * dt;
+  if (Math.abs(g.theta) >= 1) { faint(); return; }
+
+  // --- fly and the poking neighbour ---
+  if (!g.fly.on && g.t > g.fly.next) { g.fly.on = true; g.fly.until = g.t + rand(3, 5); Sound.buzzOn(); }
+  if (g.fly.on && g.t > g.fly.until) { g.fly.on = false; g.fly.next = g.t + rand(10, 18); Sound.buzzOff(); }
+  if (g.t > g.poke.next) {
+    g.poke.t = 0; g.poke.side = Math.random() < 0.5 ? -1 : 1; g.poke.next = g.t + rand(12, 20);
+  }
+  if (g.poke.t >= 0) {
+    const before = g.poke.t;
+    g.poke.t += dt;
+    if (before < 0.6 && g.poke.t >= 0.6 && holding) g.omega += -g.poke.side * 1.4;   // the poke lands
+    if (g.poke.t > 1.1) g.poke.t = -1;
+  }
+
+  // --- PT sir judges what he sees ---
+  const lateOk = g.t - g.cmdAt < reactWindow();
+  if (watching()) {
+    g.watchedTime += dt;
+    if (Math.abs(g.theta) < 0.2 && youPose() === g.cmd) g.steadyTime += dt;
+    if (!lateOk && youPose() !== g.cmd) strike(g.cmd === "att" ? "att" : "ease");
+    else if (holding && g.cmd === "att" && Math.abs(g.theta) > CAUGHT_TILT) strike("wobble");
+  }
+  $("stage").classList.toggle("watched", watching());
+
+  if (g.t >= ASSEMBLY_SECONDS) endGame("bell");
+  const left = Math.max(0, Math.ceil(ASSEMBLY_SECONDS - g.t));
+  $("clock").textContent = `${toNep(Math.floor(left / 60))}:${toNep(String(left % 60).padStart(2, "0"))}`;
+  $("progress").style.width = `${p * 100}%`;
+}
+
+function faint() {
+  g.fainted = true; g.faintT = 0;
+  g.theta = Math.sign(g.theta);
+  Sound.tone(300, 80, 0.8, 0.2, "sawtooth");
+  endGame("faint");
+}
+
+// ============================================================================
+// Drawing
+// ============================================================================
+function draw() {
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(bg, 0, 0); ctx.restore();
+  const p = g ? progress() : 0;
+
+  // the sun, getting fiercer
+  const sx = W * 0.84, sy = 80;
+  const glow = ctx.createRadialGradient(sx, sy, 20, sx, sy, 110 + p * 80);
+  glow.addColorStop(0, "rgba(255, 236, 150, .95)"); glow.addColorStop(1, "rgba(255, 236, 150, 0)");
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, 110 + p * 80, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffd84a"; ctx.beginPath(); ctx.arc(sx, sy, 42, 0, Math.PI * 2); ctx.fill();
+
+  const t = g ? g.t : performance.now() / 1000;
+  const youX = W / 2, youY = 840;
+  for (const r of rows) {
+    if (r.y === 840) continue;
+    drawStudent(r.x, r.y, r.s, { skin: r.skin, girl: r.girl, pose: r.pose, tilt: Math.sin(t * 0.9 + r.sway) * 0.02 });
+  }
+  // front line, with you in the middle
+  for (const r of rows) {
+    if (r.y !== 840) continue;
+    let tilt = Math.sin(t * 0.9 + r.sway) * 0.02;
+    if (g && r.poke && g.poke.t >= 0 && Math.sign(r.x - youX) === g.poke.side) tilt += Math.sin(Math.min(g.poke.t / 0.6, 1) * Math.PI) * -g.poke.side * 0.12;
+    drawStudent(r.x, r.y, r.s, { skin: r.skin, girl: r.girl, pose: r.pose, tilt });
+  }
+  // a yellow spot on the ground so you can always find yourself in the crowd
+  ctx.fillStyle = "rgba(255, 210, 26, .75)"; ctx.strokeStyle = "#141414"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.ellipse(youX, youY + 4, 78, 18, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  if (!g) drawStudent(youX, youY, 1.0, { skin: "#b97a52", girl: false, pose: "ease", tilt: 0 });
+  if (g) {
+    const tilt = g.fainted ? Math.sign(g.theta) * lerp(0.3, 1.45, g.faintT) : g.theta * 0.3;
+    drawStudent(youX, youY, 1.0, {
+      skin: "#b97a52", girl: false, pose: youPose(), tilt, you: true,
+      squint: g.fly.on || p > 0.6, sweat: p > 0.45 ? t : 0, fly: g.fly.on, flyT: t,
+    });
+    // "you" marker
+    const bob = Math.sin(t * 4) * 6;
+    ctx.fillStyle = "#ffd21a"; ctx.strokeStyle = "#141414"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(youX - 16, 455 + bob); ctx.lineTo(youX + 16, 455 + bob); ctx.lineTo(youX, 478 + bob); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.font = '30px "Yatra One", sans-serif'; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.lineWidth = 6; ctx.strokeText("तिमी", youX, 448 + bob); ctx.fillText("तिमी", youX, 448 + bob);
+
+    // PT sir, his gaze, and his warning
+    const tc = g.teacher;
+    const w = tc.state === "watch";
+    if (w) {
+      ctx.fillStyle = "rgba(212, 0, 26, .16)";
+      ctx.beginPath(); ctx.moveTo(tc.x - 30, 560); ctx.lineTo(youX - 70, 820); ctx.lineTo(youX + 70, 820); ctx.lineTo(tc.x + 30, 560); ctx.closePath(); ctx.fill();
+    }
+    drawTeacher(tc.x, 1010, 1.25, w, tc.walkT);
+    const hx = tc.x, hy = 1010 - 1.25 * 420;
+    if (w) drawEye(hx, hy);
+    else if (tc.state === "warn" || tc.state === "turning") drawBubble(hx, hy, "!");
+
+    drawMeter();
+  }
+}
+
+function drawEye(x, y) {
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = "#141414"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.ellipse(x, y, 44, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#d4001a"; ctx.beginPath(); ctx.arc(x + Math.sign(W / 2 - x) * 10, y, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#141414"; ctx.beginPath(); ctx.arc(x + Math.sign(W / 2 - x) * 10, y, 7, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBubble(x, y, text) {
+  ctx.fillStyle = "#ffd21a"; ctx.strokeStyle = "#141414"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#141414"; ctx.font = '44px "Baloo 2", sans-serif'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y + 3);
+}
+
+function drawMeter() {
+  // A balance level at the bottom: keep the bead in the green.
+  const w = Math.min(360, W * 0.62), x0 = W / 2 - w / 2, y = 958;
+  ctx.fillStyle = "rgba(20,20,20,.75)";
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x0 - 6, y - 16, w + 12, 32, 16) : ctx.rect(x0 - 6, y - 16, w + 12, 32); ctx.fill();
+  const zone = (a, b, color) => { ctx.fillStyle = color; ctx.fillRect(W / 2 + a * w / 2, y - 8, (b - a) * w / 2, 16); };
+  zone(-1, -CAUGHT_TILT, "#d4001a"); zone(CAUGHT_TILT, 1, "#d4001a");
+  zone(-CAUGHT_TILT, CAUGHT_TILT, "#f2b33d"); zone(-0.2, 0.2, "#3fae5a");
+  const bx = W / 2 + clamp(g.theta, -1, 1) * w / 2;
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = "#141414"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(bx, y, 13, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min((now - lastT) / 1000, 1 / 30);
+  lastT = now;
+  if (!paused) update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+// ============================================================================
+// Input: hold = attention; slide (or ←/→) to balance
+// ============================================================================
+const stage = $("stage");
+let activePointer = null;
+// Tilt control (phones): the phone's left-right tilt pushes you, like rolling the bead in a
+// spirit level. Whatever angle you hold the phone at when you press down counts as level.
+const isTouch = window.matchMedia("(pointer: coarse)").matches;
+let control = isTouch ? store("assembly.control", "tilt") : "slide";
+let tiltListening = false, tiltSeen = false, tiltRaw = 0, tiltAnchor = 0;
+
+function store(k, d) { try { return localStorage.getItem(k) || d; } catch (_) { return d; } }
+function save(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
+
+async function enableTilt() {
+  // Returns "ok", "denied" or "unsupported".
+  if (tiltListening) return "ok";
+  const DOE = window.DeviceOrientationEvent;
+  if (!DOE) return "unsupported";
+  try {
+    // iPhones (and newer Chrome) ask the player for motion permission; this must run inside the Start tap.
+    if (typeof DOE.requestPermission === "function" && (await DOE.requestPermission()) !== "granted") return "denied";
+  } catch (_) { return "denied"; }
+  window.addEventListener("deviceorientation", onOrient);
+  tiltListening = true;
+  return "ok";
+}
+
+function onOrient(e) {
+  if (e.gamma === null || e.beta === null) return;
+  const angle = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0;
+  let v = e.gamma;                                   // portrait: left-right tilt
+  if (angle === 90) v = e.beta;                      // landscape (untested on devices)
+  else if (angle === -90 || angle === 270) v = -e.beta;
+  tiltRaw = tiltSeen ? lerp(tiltRaw, v, 0.35) : v;  // light smoothing
+  tiltSeen = true;
+}
+
+function usingTilt() { return control === "tilt" && tiltSeen; }
+function tiltU() { return usingTilt() && holding ? clamp((tiltRaw - tiltAnchor) / TILT_RANGE, -1, 1) : 0; }
+
+function showInfo(text) {
+  const el = $("scold");
+  el.textContent = text;
+  el.classList.add("show", "info");
+  setTimeout(() => el.classList.remove("show", "info"), 2600);
+}
+
+function setControl(c) {
+  control = c;
+  save("assembly.control", c);
+  document.querySelectorAll("[data-control]").forEach(b => b.classList.toggle("on", b.dataset.control === c));
+}
+if (isTouch) {
+  $("controlPick").hidden = false;
+  document.querySelectorAll("[data-control]").forEach(b => b.addEventListener("click", () => setControl(b.dataset.control)));
+  setControl(control);
+}
+
+stage.addEventListener("pointerdown", e => {
+  if (activePointer !== null || !g || g.over) return;
+  Sound.init();
+  activePointer = e.pointerId;
+  stage.setPointerCapture(e.pointerId);
+  holding = true; anchorX = e.clientX; dragU = 0;
+  tiltAnchor = tiltRaw;
+});
+stage.addEventListener("pointermove", e => {
+  if (e.pointerId !== activePointer || usingTilt()) return;
+  const range = DRAG_RANGE * Math.min(window.innerWidth, 900);
+  dragU = clamp((e.clientX - anchorX) / range, -1, 1);
+});
+function release(e) {
+  if (e.pointerId !== activePointer) return;
+  activePointer = null; holding = keysDown.has("Space"); dragU = 0;
+}
+stage.addEventListener("pointerup", release);
+stage.addEventListener("pointercancel", release);
+
+window.addEventListener("keydown", e => {
+  if (!["Space", "ArrowLeft", "ArrowRight"].includes(e.code)) return;
+  e.preventDefault();
+  keysDown.add(e.code);
+  if (e.code === "Space" && g && !g.over && !paused) { Sound.init(); holding = true; }
+  keyU = (keysDown.has("ArrowRight") ? 1 : 0) - (keysDown.has("ArrowLeft") ? 1 : 0);
+});
+window.addEventListener("keyup", e => {
+  keysDown.delete(e.code);
+  if (e.code === "Space") holding = activePointer !== null;
+  keyU = (keysDown.has("ArrowRight") ? 1 : 0) - (keysDown.has("ArrowLeft") ? 1 : 0);
+});
+
+// ============================================================================
+// Flow
+// ============================================================================
+function start() {
+  Sound.init();
+  $("startScreen").hidden = true;
+  $("resultScreen").hidden = true;
+  holding = false; dragU = 0; keyU = 0; activePointer = null;
+  newGame();
+  Sound.startMusic();
+}
+
+function endGame(reason) {
+  if (g.over) return;
+  g.over = true; g.reason = reason;
+  holding = false;
+  Sound.stopMusic(); Sound.buzzOff();
+  $("stage").classList.remove("watched");
+  if (reason === "bell") Sound.bell();
+  setTimeout(showResults, reason === "faint" ? 1400 : 900);
+}
+
+function rank() {
+  const steady = g.watchedTime > 0 ? g.steadyTime / g.watchedTime : 1;
+  if (g.reason === "faint") return { title: "बेहोस!", line: "Fainted in the sun. Someone fetch water!" };
+  if (g.reason === "strikes") return { title: "कान समातेर उठबस!", line: "PT sir caught you three times. Hold your ears and do sit-ups." };
+  if (g.strikes === 0 && steady >= 0.8) return { title: "मनिटर!", line: "Still as a statue. They're making you class monitor." };
+  if (g.strikes === 0) return { title: "असल विद्यार्थी", line: "Not one scolding. Straight to class." };
+  return { title: "ब्याक बेन्चर", line: "Survived, just about. Back bench it is." };
+}
+
+function showResults() {
+  const r = rank();
+  $("resultTitle").textContent = r.title;
+  $("resultLine").textContent = r.line;
+  const steady = g.watchedTime > 0 ? Math.round(100 * g.steadyTime / g.watchedTime) : 100;
+  $("stats").innerHTML = [
+    ["Survived", `${toNep(Math.min(Math.floor(g.t), ASSEMBLY_SECONDS))}s / ${toNep(ASSEMBLY_SECONDS)}s`],
+    ["Scoldings · गल्ती", `${toNep(g.strikes)}`],
+    ["Still while watched", `${toNep(steady)}%`],
+  ].map(([k, v]) => `<li><span>${k}</span><span>${v}</span></li>`).join("");
+  $("resultScreen").hidden = false;
+}
+
+function shareText() {
+  const r = rank();
+  return `🧍 प्रार्थना: "${r.title}" (${Math.min(Math.floor(g.t), ASSEMBLY_SECONDS)}s, ${g.strikes} scoldings). Can you survive morning assembly?`;
+}
+
+async function startClicked() {
+  if (control === "tilt") {
+    const status = await enableTilt();
+    if (status === "denied") {
+      setControl("slide");
+      start();
+      showInfo("Tilt needs motion permission, so you're on Slide. Allow motion access to use Tilt.");
+      return;
+    }
+    setTimeout(() => {
+      if (control === "tilt" && !tiltSeen && g && !g.over) {
+        setControl("slide");
+        showInfo("Tilt isn't available here. Slide your finger instead.");
+      }
+    }, 1500);
+  }
+  start();
+}
+$("startBtn").addEventListener("click", startClicked);
+
+let howFromStart = false;
+function openHow(fromStart) {
+  howFromStart = fromStart;
+  if (!fromStart && g && !g.over && !paused) {
+    paused = true;
+    holding = false; activePointer = null; dragU = 0;
+    Sound.stopMusic(); Sound.buzzOff();
+  }
+  $("startScreen").hidden = true;
+  $("howScreen").hidden = false;
+}
+function closeHow() {
+  $("howScreen").hidden = true;
+  if (howFromStart) { $("startScreen").hidden = false; return; }
+  if (paused) {
+    paused = false;
+    lastT = performance.now();
+    Sound.startMusic();
+    if (g.fly.on) Sound.buzzOn();
+  }
+}
+$("howBtn").addEventListener("click", () => openHow(true));
+$("helpBtn").addEventListener("click", () => {
+  const onStart = !$("startScreen").hidden;
+  if (!$("resultScreen").hidden) return;
+  openHow(onStart || !g);
+});
+$("howClose").addEventListener("click", closeHow);
+$("againBtn").addEventListener("click", startClicked);
+$("shareBtn").addEventListener("click", async () => {
+  const text = shareText();
+  const url = location.href.split("#")[0];
+  try {
+    if (navigator.share) await navigator.share({ title: "Morning Assembly", text, url });
+    else {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      $("shareBtn").textContent = "Copied!";
+      setTimeout(() => ($("shareBtn").textContent = "Share"), 1500);
+    }
+  } catch (_) { /* share cancelled */ }
+});
+$("mute").addEventListener("click", () => {
+  Sound.muted = !Sound.muted;
+  $("mute").textContent = Sound.muted ? "🔇" : "🔊";
+  if (Sound.muted) Sound.buzzOff();
+});
+
+resize();
+document.fonts.ready.then(resize);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
