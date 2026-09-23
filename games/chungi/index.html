@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Chungi</title>
+  <meta name="description" content="Keep the rubber-band chungi in the air. How many kicks can you do?">
+  <meta name="theme-color" content="#ffd21a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Baloo+2:wght@600;800&family=Mukta:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* Same pasal/signboard system as the other games; the scene itself is a school ground. */
+    :root {
+      --ink: #10212b;
+      --muted: #3f5a67;
+      --sign: #ffd21a;
+      --sign-red: #d4001a;
+      --sign-black: #141414;
+      --paper: #fffdf6;
+      --sky: #a9d6ea;
+    }
+    * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--sky);
+      color: var(--ink);
+      font-family: "Mukta", system-ui, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
+    .shop { height: 100dvh; display: flex; flex-direction: column; }
+
+    /* --- signboard ----------------------------------------------------- */
+    .sign {
+      background: var(--sign);
+      border-bottom: 6px solid var(--sign-red);
+      box-shadow: 0 4px 0 rgba(0, 0, 0, .12);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: max(10px, env(safe-area-inset-top)) 16px 8px;
+      position: relative; z-index: 2;
+    }
+    .sign .back { color: var(--sign-black); font-weight: 800; text-decoration: none; font-size: .95rem; }
+    .sign .board { text-align: center; line-height: 1.2; }
+    .sign .np {
+      display: block;
+      font-family: "Yatra One", "Mukta", sans-serif;
+      color: var(--sign-red);
+      font-size: clamp(1.4rem, 5.5vw, 2.4rem);
+      text-shadow: 1px 1px 0 rgba(0, 0, 0, .15);
+    }
+    .sign .en {
+      display: block;
+      font-family: "Baloo 2", sans-serif; font-weight: 800;
+      color: var(--sign-black);
+      font-size: clamp(.62rem, 2.3vw, .9rem);
+      letter-spacing: .12em; text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .sign .mute {
+      justify-self: end;
+      background: var(--sign-black); color: var(--sign);
+      border: 0; border-radius: 999px;
+      width: 36px; height: 36px; font-size: 1rem; cursor: pointer;
+    }
+
+    /* --- stage --------------------------------------------------------- */
+    .stage { position: relative; flex: 1; min-height: 0; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+    .hud {
+      position: absolute; left: 0; right: 0; top: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 16px; pointer-events: none;
+    }
+    .chip {
+      font-family: "Baloo 2", sans-serif; font-weight: 800;
+      background: var(--sign-black); color: var(--sign);
+      padding: 2px 12px; border-radius: 8px; font-size: 1rem;
+    }
+    .chip[hidden] { display: none; }
+    .count {
+      position: absolute; left: 50%; top: 5%;
+      transform: translateX(-50%);
+      font-family: "Yatra One", sans-serif;
+      font-size: clamp(4rem, 15vh, 8.5rem);
+      line-height: 1;
+      color: #fff;
+      -webkit-text-stroke: 3px var(--sign-black);
+      paint-order: stroke fill;
+      text-shadow: 5px 5px 0 var(--sign-black);
+      pointer-events: none;
+      transition: transform .08s;
+    }
+    .count.pop { transform: translateX(-50%) scale(1.15); }
+
+    /* --- overlays ------------------------------------------------------ */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(16, 33, 43, .5);
+      backdrop-filter: blur(3px);
+      display: grid; place-items: center;
+      padding: 16px;
+      z-index: 10;
+      touch-action: manipulation;
+    }
+    .overlay[hidden] { display: none; }
+    .signpanel {
+      width: 100%; max-width: 420px;
+      background: var(--sign);
+      border: 6px solid var(--sign-red);
+      outline: 3px solid var(--sign-black);
+      border-radius: 10px;
+      padding: 22px 22px 20px;
+      text-align: center;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+    }
+    .signpanel h1 {
+      font-family: "Yatra One", sans-serif; font-weight: 400;
+      color: var(--sign-red); font-size: 3.2rem; line-height: 1.05;
+    }
+    .signpanel h2 { font-family: "Yatra One", sans-serif; font-weight: 400; color: var(--sign-red); font-size: 2rem; line-height: 1.15; }
+    .signpanel .sub { font-family: "Baloo 2", sans-serif; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: .85rem; }
+    .signpanel ol { text-align: left; margin: 14px 0 4px; padding-left: 1.3em; font-weight: 600; }
+    .signpanel li { margin: 5px 0; }
+    .signpanel .big {
+      font-family: "Yatra One", sans-serif; font-size: 5rem; line-height: 1; margin: 6px 0 2px;
+      color: #fff; -webkit-text-stroke: 3px var(--sign-black); paint-order: stroke fill;
+      text-shadow: 4px 4px 0 var(--sign-black);
+    }
+    .signpanel .note { font-weight: 600; margin-top: 6px; }
+    .signpanel .record { display: inline-block; background: var(--sign-red); color: #fff; font-weight: 800; padding: 2px 12px; border-radius: 999px; margin-top: 6px; }
+    .signpanel .record[hidden] { display: none; }
+    .signpanel .label { font-family: "Baloo 2", sans-serif; font-weight: 800; margin-top: 14px; }
+    .board-list { list-style: none; padding: 0; margin: 14px 0 0; text-align: left; }
+    .board-list li {
+      display: flex; justify-content: space-between;
+      background: var(--paper); border: 2px solid var(--sign-black);
+      border-radius: 8px; padding: 6px 12px; margin: 6px 0;
+      font-weight: 800;
+    }
+    .board-list li.win { background: var(--sign-black); color: var(--sign); }
+    .row { display: flex; gap: 8px; margin-top: 8px; }
+    .swatch {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 6px 10px; border-radius: 10px; cursor: pointer;
+      background: var(--paper); border: 3px solid var(--sign-black);
+      font: 800 1.05rem "Baloo 2", sans-serif; color: var(--ink);
+    }
+    .swatch canvas { width: 44px; height: 44px; }
+    .swatch.on { border-color: var(--sign-red); box-shadow: 0 0 0 3px var(--sign-red); }
+    .btn {
+      display: block; width: 100%;
+      margin-top: 12px; padding: 12px;
+      border: 0; border-radius: 10px;
+      background: var(--sign-red); color: #fff;
+      font: 800 1.2rem "Baloo 2", sans-serif;
+      cursor: pointer;
+      box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25);
+    }
+    .row .btn { margin-top: 0; }
+    .btn:active { box-shadow: none; transform: translateY(2px); }
+    .btn.secondary { background: var(--sign-black); color: var(--sign); }
+  </style>
+</head>
+<body>
+<div class="shop">
+  <header class="sign">
+    <a class="back" href="../../index.html">← खेलहरू</a>
+    <div class="board">
+      <span class="np">चुङ्गी</span>
+      <span class="en">Keep it in the air</span>
+    </div>
+    <button class="mute" id="mute" aria-label="Toggle sound">🔊</button>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="canvas"></canvas>
+    <div class="hud">
+      <span class="chip" id="bestChip">रेकर्ड: ०</span>
+      <span class="chip" id="playerChip" hidden></span>
+    </div>
+    <div class="count" id="count">०</div>
+  </div>
+</div>
+
+<div class="overlay" id="startScreen">
+  <div class="signpanel">
+    <h1>चुङ्गी</h1>
+    <div class="sub">Chungi</div>
+    <ol>
+      <li>Tap near the ball when it drops below knee height.</li>
+      <li>Tap left of the ball to send it right, and the other way round.</li>
+      <li>Kick it just before it lands for a <b>च्वाक!</b> kick.</li>
+    </ol>
+    <p class="note">Laptop: click, or Space / ← / →</p>
+    <div class="label">चुङ्गी छान्नुहोस् · Pick your chungi</div>
+    <div class="row">
+      <button class="swatch" data-style="mix"><canvas></canvas><span>रंगीन</span></button>
+      <button class="swatch" data-style="black"><canvas></canvas><span>कालो</span></button>
+    </div>
+    <button class="btn" id="soloBtn">एक्लै खेलौं · Solo</button>
+    <div class="label">साथीसँग · Pass the phone</div>
+    <div class="row">
+      <button class="btn secondary" data-players="2">२ जना</button>
+      <button class="btn secondary" data-players="3">३ जना</button>
+      <button class="btn secondary" data-players="4">४ जना</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="turnScreen" hidden>
+  <div class="signpanel">
+    <h2 id="turnTitle"></h2>
+    <p class="note" id="turnNote"></p>
+    <button class="btn" id="turnBtn">तयार · Ready</button>
+  </div>
+</div>
+
+<div class="overlay" id="resultScreen" hidden>
+  <div class="signpanel">
+    <h2 id="resultTitle"></h2>
+    <div class="big" id="resultCount"></div>
+    <p class="note" id="resultNote"></p>
+    <span class="record" id="newRecord" hidden>नयाँ रेकर्ड! New record!</span>
+    <ul class="board-list" id="leaderboard"></ul>
+    <button class="btn" id="shareBtn">Share</button>
+    <button class="btn secondary" id="againBtn">फेरि खेलौं · Play again</button>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// Design knobs -- tweak these first. The world is 1000 units tall; its width
+// follows the screen shape, so laptops get a wider school ground.
+// ============================================================================
+const GRAVITY = 1800;             // world units / s²
+const GRAVITY_RAMP = 0.012;       // +1.2% gravity per kick...
+const GRAVITY_MAX = 1.9;          // ...up to this multiple
+const GROUND_Y = 900;
+const BALL_R = 34;
+const ZONE_TOP = 560;             // ball must be below this line ("knee height") to be kickable
+const PERFECT_Y = 790;            // ball below this line when kicked = च्वाक kick
+const REACH = 190;                // horizontal distance from the ball a tap still connects
+const WHIFF_COOLDOWN = 0.28;      // seconds the leg needs to recover after a miss (stops spam)
+const APEX = [150, 290];          // a normal kick sends the ball up to this height (world y)
+const PERFECT_APEX = [90, 170];   // a च्वाक kick goes higher, giving you more time
+const SIDE_SPEED = 5.5;           // tap offset from the ball -> sideways speed
+const SIDE_MAX = 520;
+const WOBBLE = 70;                // random sideways drift from the lumpy rubber bands
+const SCHOOL_NAME = "श्री सजिलो माध्यमिक विद्यालय";
+const MILESTONES = { 10: "राम्रो!", 25: "गजब!", 50: "ओहो!", 100: "चुङ्गी सम्राट!" };
+// Chungi colours the player can pick from. strands = rubber-band colours, base = gaps between them.
+const CHUNGI_STYLES = {
+  black: { name: "कालो · Black", base: "#0b0b0b", strands: ["#101010", "#1a1a1a", "#242424", "#2e2e2e", "#3a3a3a"], shine: 0.4 },
+  mix:   { name: "रंगीन · Colour", base: "#5a3d10", strands: ["#f28c28", "#e8671c", "#f6c026", "#ffd54a", "#8cc63f", "#6aa84f", "#c5d82f"], shine: 0.45 },
+};
+
+const $ = id => document.getElementById(id);
+const toNep = n => String(n).replace(/\d/g, d => "०१२३४५६७८९"[d]);
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (_) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} },
+};
+
+// ============================================================================
+// Sound: synthesized -- rubber thwack, whiff, thud, school bell
+// ============================================================================
+const Sound = {
+  ctx: null, muted: false, noise: null,
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+    const len = this.ctx.sampleRate / 2;
+    this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const d = this.noise.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  },
+  burst(dur, filterType, freq, vol) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource(); src.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter(); f.type = filterType; f.frequency.value = freq;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f).connect(g).connect(this.ctx.destination);
+    src.start(t); src.stop(t + dur);
+  },
+  tone(f0, f1, dur, vol, type = "sine", delay = 0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime + delay;
+    const o = this.ctx.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + dur);
+  },
+  kick(perfect) {
+    this.burst(0.06, "lowpass", 1100, 0.5);
+    this.tone(170, 70, 0.12, 0.35);
+    if (perfect) this.tone(1320, 1320, 0.18, 0.08, "triangle", 0.03);
+  },
+  whiff() { this.burst(0.12, "highpass", 2500, 0.08); },
+  drop() { this.tone(110, 45, 0.3, 0.45); this.burst(0.2, "lowpass", 400, 0.35); },
+  bell() { for (let i = 0; i < 3; i++) this.tone(1480, 1400, 0.22, 0.09, "triangle", i * 0.28); },
+  milestone() { [660, 880, 1320].forEach((f, i) => this.tone(f, f, 0.14, 0.08, "triangle", i * 0.09)); },
+};
+
+// ============================================================================
+// Canvas + world
+// ============================================================================
+const canvas = $("canvas"), ctx = canvas.getContext("2d");
+const bg = document.createElement("canvas"), bgc = bg.getContext("2d");
+let scale = 1, dpr = 1, WORLD_W = 600;
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  scale = r.height / 1000;
+  WORLD_W = r.width / scale;
+  for (const c of [canvas, bg]) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  bgc.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  drawBackground();
+  if (ball) ball.x = clamp(ball.x, BALL_R, WORLD_W - BALL_R);
+}
+window.addEventListener("resize", resize);
+
+function drawBackground() {
+  const W = WORLD_W, c = bgc;
+  // Sky
+  const sky = c.createLinearGradient(0, 0, 0, 360);
+  sky.addColorStop(0, "#8fcbe6"); sky.addColorStop(1, "#e4f3f6");
+  c.fillStyle = sky; c.fillRect(0, 0, W, 360);
+
+  // Himalaya on the horizon
+  c.fillStyle = "#9db6c6";
+  c.beginPath(); c.moveTo(0, 360);
+  for (let x = 0; x <= W + 120; x += 120) c.lineTo(x + 60, 300 - ((x * 7) % 90)), c.lineTo(x + 120, 350);
+  c.lineTo(W, 360); c.fill();
+  c.fillStyle = "#f7fbfc";
+  for (let x = 0; x <= W + 240; x += 240) {
+    const px = x + 150, py = 230 + ((x * 3) % 50);
+    c.beginPath(); c.moveTo(px - 110, 360); c.lineTo(px, py); c.lineTo(px + 110, 360); c.fill();
+    c.fillStyle = "#c9dbe5";
+    c.beginPath(); c.moveTo(px, py); c.lineTo(px + 110, 360); c.lineTo(px + 20, 360); c.fill();
+    c.fillStyle = "#f7fbfc";
+  }
+
+  // School wall: concrete cap, brick, white painted band with the school name
+  const wallTop = 350;
+  c.fillStyle = "#a9a39a"; c.fillRect(0, wallTop, W, 14);
+  c.fillStyle = "#b4553d"; c.fillRect(0, wallTop + 14, W, GROUND_Y - wallTop - 14);
+  c.strokeStyle = "#d8c2a2"; c.lineWidth = 3;
+  const bw = 64, bh = 26;
+  for (let y = wallTop + 14, row = 0; y < GROUND_Y; y += bh, row++) {
+    c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke();
+    for (let x = (row % 2) * (bw / 2); x < W; x += bw) {
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x, Math.min(y + bh, GROUND_Y)); c.stroke();
+    }
+  }
+  const bandY = 420, bandH = 90;
+  c.fillStyle = "#f4efe4"; c.fillRect(0, bandY, W, bandH);
+  c.fillStyle = "#1d4e89"; c.fillRect(0, bandY, W, 6); c.fillRect(0, bandY + bandH - 6, W, 6);
+  c.fillStyle = "#b3122e";
+  c.textAlign = "center"; c.textBaseline = "middle";
+  let size = 50;
+  c.font = `${size}px "Yatra One", sans-serif`;
+  const tw = c.measureText(SCHOOL_NAME).width;
+  if (tw > W * 0.9) { size *= (W * 0.9) / tw; c.font = `${size}px "Yatra One", sans-serif`; }
+  c.fillText(SCHOOL_NAME, W / 2, bandY + bandH / 2 + 2);
+
+  // Dusty ground
+  c.fillStyle = "#cfae7e"; c.fillRect(0, GROUND_Y, W, 100);
+  c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(0, GROUND_Y, W, 8);
+  c.fillStyle = "rgba(120, 84, 44, .35)";
+  for (let i = 0; i < W / 3; i++) c.fillRect((i * 97.3) % W, GROUND_Y + 12 + ((i * 53) % 84), 3, 3);
+}
+
+// ============================================================================
+// Game state
+// ============================================================================
+let ball = null, count = 0, perfects = 0, phase = "idle", dropTimer = 0, cooldown = 0, squash = 0;
+let leg = null;        // { x, y, t, side }
+let floaters = [];     // { text, x, y, t, big }
+let players = 1, current = 0, scores = [];
+let best = store.get("chungi.best", 0);
+let ballStyle = store.get("chungi.style", "mix");
+
+function gravity() { return GRAVITY * Math.min(1 + count * GRAVITY_RAMP, GRAVITY_MAX); }
+
+function setCount(n) {
+  count = n;
+  const el = $("count");
+  el.textContent = toNep(n);
+  el.classList.add("pop");
+  setTimeout(() => el.classList.remove("pop"), 90);
+}
+
+function updateBest() { $("bestChip").textContent = `रेकर्ड: ${toNep(best)}`; }
+
+function startTurn() {
+  ball = { x: WORLD_W / 2, y: 260, vx: rand(-40, 40), vy: -250, rot: 0, spin: rand(-3, 3) };
+  setCount(0);
+  perfects = 0; floaters = []; leg = null; cooldown = 0;
+  phase = "play";
+  Sound.bell();
+  const chip = $("playerChip");
+  chip.hidden = players === 1;
+  chip.textContent = `खेलाडी ${toNep(current + 1)}`;
+}
+
+function kickAt(tapX, tapY) {
+  if (phase !== "play" || cooldown > 0) return;
+  const dx = ball.x - tapX;
+  const connects = ball.y >= ZONE_TOP && Math.abs(dx) < REACH;
+  leg = { x: connects ? ball.x - dx * 0.25 : tapX, y: connects ? ball.y + BALL_R * 0.6 : Math.max(tapY, ZONE_TOP), t: 0, side: tapX < WORLD_W / 2 ? -1 : 1 };
+  if (!connects) {
+    cooldown = WHIFF_COOLDOWN;
+    Sound.whiff();
+    return;
+  }
+  const perfect = ball.y >= PERFECT_Y;
+  const [lo, hi] = perfect ? PERFECT_APEX : APEX;
+  const apex = rand(lo, hi);
+  ball.vy = -Math.sqrt(2 * gravity() * Math.max(ball.y - apex, 50));
+  const wobble = WOBBLE * (1 + count * 0.01);
+  ball.vx = clamp(dx * SIDE_SPEED, -SIDE_MAX, SIDE_MAX) + rand(-wobble, wobble);
+  ball.spin = rand(-6, 6);
+  squash = 1;
+  setCount(count + 1);
+  if (perfect) perfects += 1;
+  Sound.kick(perfect);
+  if (navigator.vibrate) navigator.vibrate(perfect ? 25 : 12);
+
+  if (MILESTONES[count]) {
+    floaters.push({ text: MILESTONES[count], x: WORLD_W / 2, y: 330, t: 0, big: true });
+    Sound.milestone();
+  } else if (perfect) {
+    floaters.push({ text: "च्वाक!", x: ball.x, y: ball.y - 60, t: 0, big: false });
+  }
+}
+
+function drop() {
+  phase = "dropped";
+  dropTimer = 0;
+  ball.y = GROUND_Y - BALL_R;
+  ball.vy = -Math.abs(ball.vy) * 0.3;
+  ball.vx *= 0.5;
+  Sound.drop();
+  if (navigator.vibrate) navigator.vibrate(60);
+}
+
+function update(dt) {
+  if (cooldown > 0) cooldown -= dt;
+  if (leg) { leg.t += dt; if (leg.t > 0.32) leg = null; }
+  squash = Math.max(0, squash - dt * 6);
+  floaters.forEach(f => { f.t += dt; f.y -= 60 * dt; });
+  floaters = floaters.filter(f => f.t < (f.big ? 1.4 : 0.8));
+  if (!ball || phase === "idle") return;
+
+  const g = phase === "play" ? gravity() : GRAVITY;
+  ball.vy += g * dt;
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+  ball.rot += (ball.vx * 0.004 + ball.spin) * dt;
+  if (ball.x < BALL_R) { ball.x = BALL_R; ball.vx = Math.abs(ball.vx) * 0.7; }
+  if (ball.x > WORLD_W - BALL_R) { ball.x = WORLD_W - BALL_R; ball.vx = -Math.abs(ball.vx) * 0.7; }
+
+  if (phase === "play" && ball.y + BALL_R >= GROUND_Y) drop();
+  else if (phase === "dropped") {
+    if (ball.y + BALL_R >= GROUND_Y) { ball.y = GROUND_Y - BALL_R; ball.vy = -ball.vy * 0.3; ball.vx *= 0.8; ball.spin *= 0.5; }
+    dropTimer += dt;
+    if (dropTimer > 1.1) { phase = "idle"; endTurn(); }
+  }
+}
+
+// ============================================================================
+// Drawing
+// ============================================================================
+function makeBallSprite(style) {
+  // A bundle of rubber bands: many thin strands wrapped in random directions (each one a
+  // great circle seen from outside = an ellipse), plus a few loose ends sticking out.
+  const PX = 4;                       // sprite pixels per world unit
+  const size = (BALL_R + 14) * 2;     // room for the loose strands
+  const c = document.createElement("canvas");
+  c.width = c.height = Math.round(size * PX);
+  const g = c.getContext("2d");
+  g.scale(PX, PX);
+  g.translate(size / 2, size / 2);
+  const pick = () => style.strands[Math.floor(Math.random() * style.strands.length)];
+
+  g.fillStyle = style.base;
+  g.beginPath(); g.arc(0, 0, BALL_R, 0, Math.PI * 2); g.fill();
+  g.save();
+  g.beginPath(); g.arc(0, 0, BALL_R, 0, Math.PI * 2); g.clip();
+  g.lineCap = "round";
+  for (let i = 0; i < 90; i++) {
+    g.strokeStyle = pick();
+    g.lineWidth = rand(1.4, 3.2);
+    g.beginPath();
+    g.ellipse(rand(-3, 3), rand(-3, 3), BALL_R * rand(0.8, 1.02), BALL_R * rand(0.05, 1), rand(0, Math.PI), 0, Math.PI * 2);
+    g.stroke();
+  }
+  g.restore();
+
+  // A few loose band loops standing off the surface: the "stringy" edge. Each loop is
+  // anchored at two nearby points on the rim and bulges a little outward.
+  g.lineCap = "round";
+  for (let i = 0; i < 7; i++) {
+    const a = rand(0, Math.PI * 2), da = rand(0.12, 0.3), bulge = BALL_R + rand(3, 8);
+    g.strokeStyle = pick();
+    g.lineWidth = rand(1.4, 2.2);
+    g.beginPath();
+    g.moveTo(Math.cos(a - da) * (BALL_R - 1), Math.sin(a - da) * (BALL_R - 1));
+    g.quadraticCurveTo(Math.cos(a) * bulge, Math.sin(a) * bulge, Math.cos(a + da) * (BALL_R - 1), Math.sin(a + da) * (BALL_R - 1));
+    g.stroke();
+  }
+  return { canvas: c, size };
+}
+
+let ballSprite = null;
+function setBallStyle(key) {
+  ballStyle = CHUNGI_STYLES[key] ? key : "mix";
+  store.set("chungi.style", ballStyle);
+  ballSprite = makeBallSprite(CHUNGI_STYLES[ballStyle]);
+  document.querySelectorAll("[data-style]").forEach(b => b.classList.toggle("on", b.dataset.style === ballStyle));
+}
+
+function drawBall() {
+  const { x, y, rot } = ball;
+  // Shadow on the ground, smaller when the ball is higher
+  const h = clamp((GROUND_Y - y) / 700, 0, 1);
+  ctx.fillStyle = `rgba(60, 40, 20, ${0.35 - h * 0.2})`;
+  ctx.beginPath(); ctx.ellipse(x, GROUND_Y + 6, BALL_R * (1.1 - h * 0.5), 8 * (1 - h * 0.5), 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.save();
+  ctx.translate(x, y);
+  const s = squash * 0.22;
+  ctx.scale(1 + s, 1 - s);
+  // Texture spins with the ball...
+  ctx.save();
+  ctx.rotate(rot);
+  ctx.drawImage(ballSprite.canvas, -ballSprite.size / 2, -ballSprite.size / 2, ballSprite.size, ballSprite.size);
+  ctx.restore();
+  // ...while the light stays fixed (top-left), which is what makes it read as a sphere.
+  const shade = ctx.createRadialGradient(0, 0, BALL_R * 0.45, 0, 0, BALL_R);
+  shade.addColorStop(0, "rgba(0,0,0,0)");
+  shade.addColorStop(1, "rgba(0,0,0,.5)");
+  ctx.fillStyle = shade;
+  ctx.beginPath(); ctx.arc(0, 0, BALL_R, 0, Math.PI * 2); ctx.fill();
+  const shine = ctx.createRadialGradient(-BALL_R * 0.38, -BALL_R * 0.42, 0, -BALL_R * 0.38, -BALL_R * 0.42, BALL_R * 0.7);
+  shine.addColorStop(0, `rgba(255,255,255,${CHUNGI_STYLES[ballStyle].shine})`);
+  shine.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = shine;
+  ctx.beginPath(); ctx.arc(0, 0, BALL_R, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawLeg() {
+  // Your school-uniform leg swings up from the bottom of the screen.
+  const t = leg.t;
+  const ext = t < 0.08 ? t / 0.08 : t < 0.14 ? 1 : Math.max(0, 1 - (t - 0.14) / 0.18);
+  const hip = { x: WORLD_W / 2 + leg.side * 120, y: 1260 };
+  const foot = { x: hip.x + (leg.x - hip.x) * ext, y: hip.y + (leg.y - hip.y) * ext };
+  const knee = { x: (hip.x + foot.x) / 2 + leg.side * 70, y: (hip.y + foot.y) / 2 + 30 };
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.strokeStyle = "#233a5e"; ctx.lineWidth = 56;           // navy school trousers
+  ctx.beginPath(); ctx.moveTo(hip.x, hip.y); ctx.quadraticCurveTo(knee.x, knee.y, foot.x, foot.y + 30); ctx.stroke();
+  ctx.strokeStyle = "#f2f2f2"; ctx.lineWidth = 36;           // white sock
+  ctx.beginPath(); ctx.moveTo(foot.x, foot.y + 44); ctx.lineTo(foot.x, foot.y + 18); ctx.stroke();
+  drawShoe(foot.x, foot.y, -leg.side);
+}
+
+function drawShoe(x, y, dir) {
+  // Side view of a black canvas school shoe with a white rubber sole and toe cap,
+  // toe pointing toward the middle of the ground (dir = -1 left, 1 right).
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1);
+  ctx.rotate(-0.18);
+  const L = 104, back = -34;
+  // canvas upper
+  ctx.fillStyle = "#161616";
+  ctx.beginPath();
+  ctx.moveTo(back, 14);
+  ctx.lineTo(back, -18);
+  ctx.quadraticCurveTo(back + 4, -30, back + 26, -28);
+  ctx.lineTo(back + 50, -16);
+  ctx.quadraticCurveTo(back + L, -16, back + L, 8);
+  ctx.lineTo(back + L, 14);
+  ctx.closePath(); ctx.fill();
+  // white rubber toe cap
+  ctx.fillStyle = "#f4f4f4";
+  ctx.beginPath();
+  ctx.moveTo(back + 74, 14);
+  ctx.quadraticCurveTo(back + 74, -12, back + L - 12, -12);
+  ctx.quadraticCurveTo(back + L, -8, back + L, 8);
+  ctx.lineTo(back + L, 14);
+  ctx.closePath(); ctx.fill();
+  // white sole with a thin line
+  ctx.fillRect(back - 2, 12, L + 4, 12);
+  ctx.fillStyle = "#b9b9b9"; ctx.fillRect(back - 2, 19, L + 4, 2);
+  // laces
+  ctx.strokeStyle = "#f4f4f4"; ctx.lineWidth = 3; ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const lx = back + 34 + i * 11;
+    ctx.beginPath(); ctx.moveTo(lx, -22 + i * 2); ctx.lineTo(lx + 8, -14 + i * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function draw() {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(bg, 0, 0);
+  ctx.restore();
+
+  // Kick zone: a faint band from knee height to the ground
+  const zone = ctx.createLinearGradient(0, ZONE_TOP, 0, GROUND_Y);
+  zone.addColorStop(0, "rgba(255,255,255,0)");
+  zone.addColorStop(1, "rgba(255,255,255,.16)");
+  ctx.fillStyle = zone; ctx.fillRect(0, ZONE_TOP, WORLD_W, GROUND_Y - ZONE_TOP);
+  ctx.setLineDash([14, 12]); ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, ZONE_TOP); ctx.lineTo(WORLD_W, ZONE_TOP); ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (leg) drawLeg();
+  if (ball) drawBall();
+
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const f of floaters) {
+    const life = f.big ? 1.4 : 0.8;
+    ctx.globalAlpha = clamp(1 - f.t / life, 0, 1);
+    ctx.font = `${f.big ? 90 : 52}px "Yatra One", sans-serif`;
+    ctx.lineWidth = f.big ? 10 : 7; ctx.strokeStyle = "#141414";
+    ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillStyle = f.big ? "#ffd21a" : "#fff";
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min((now - lastT) / 1000, 1 / 30);
+  lastT = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+// ============================================================================
+// Input
+// ============================================================================
+function toWorld(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+}
+canvas.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  Sound.init();
+  const p = toWorld(e);
+  kickAt(p.x, p.y);
+});
+window.addEventListener("keydown", e => {
+  if (!ball || phase !== "play" || e.repeat) return;
+  // Space/↑ kicks straight up; ← / → kick from the side to steer the ball.
+  if (e.code === "Space" || e.code === "ArrowUp") { e.preventDefault(); kickAt(ball.x + rand(-15, 15), ball.y); }
+  else if (e.code === "ArrowLeft") { e.preventDefault(); kickAt(ball.x + 60, ball.y); }
+  else if (e.code === "ArrowRight") { e.preventDefault(); kickAt(ball.x - 60, ball.y); }
+});
+
+// ============================================================================
+// Flow: solo or pass-the-phone
+// ============================================================================
+function beginGame(n) {
+  Sound.init();
+  players = n; current = 0; scores = [];
+  $("startScreen").hidden = true;
+  $("resultScreen").hidden = true;
+  if (players === 1) startTurn();
+  else showTurnScreen();
+}
+
+function showTurnScreen() {
+  $("turnTitle").textContent = `खेलाडी ${toNep(current + 1)} को पालो`;
+  $("turnNote").textContent = `Pass the phone to Player ${current + 1}.`;
+  $("turnScreen").hidden = false;
+}
+
+function endTurn() {
+  scores[current] = { kicks: count, perfects };
+  const newRecord = count > best;
+  if (newRecord) { best = count; store.set("chungi.best", best); updateBest(); }
+  if (players > 1 && current < players - 1) {
+    current += 1;
+    showTurnScreen();
+    return;
+  }
+  showResults(newRecord);
+}
+
+function showResults(newRecord) {
+  const list = $("leaderboard");
+  list.innerHTML = "";
+  if (players === 1) {
+    $("resultTitle").textContent = count >= 25 ? "गजब खेल्यौ!" : count >= 10 ? "राम्रो!" : "खस्यो! Dropped.";
+    $("resultCount").textContent = toNep(count);
+    $("resultNote").textContent = `${count} kick${count === 1 ? "" : "s"} · ${perfects} च्वाक · best ${best}`;
+    $("resultCount").hidden = false;
+    $("newRecord").hidden = !newRecord || count === 0;
+  } else {
+    const order = scores.map((s, i) => ({ ...s, i })).sort((a, b) => b.kicks - a.kicks);
+    const top = order[0].kicks;
+    const winners = order.filter(s => s.kicks === top);
+    $("resultTitle").textContent = winners.length > 1 ? "बराबरी! It's a tie!" : `खेलाडी ${toNep(winners[0].i + 1)} जित्यो!`;
+    $("resultCount").hidden = true;
+    $("newRecord").hidden = true;
+    $("resultNote").textContent = "";
+    for (const s of order) {
+      const li = document.createElement("li");
+      if (s.kicks === top) li.className = "win";
+      li.innerHTML = `<span>खेलाडी ${toNep(s.i + 1)}</span><span>${toNep(s.kicks)}</span>`;
+      list.appendChild(li);
+    }
+  }
+  $("resultScreen").hidden = false;
+}
+
+function shareText() {
+  if (players === 1) return `🦶 चुङ्गी: ${toNep(count)} kicks in a row (${count})! Can you beat me?`;
+  const top = Math.max(...scores.map(s => s.kicks));
+  return `🦶 चुङ्गी with ${players} friends: top score ${toNep(top)} (${top}) kicks! Your turn.`;
+}
+
+$("soloBtn").addEventListener("click", () => beginGame(1));
+document.querySelectorAll("[data-players]").forEach(b =>
+  b.addEventListener("click", () => beginGame(Number(b.dataset.players))));
+$("turnBtn").addEventListener("click", () => { $("turnScreen").hidden = true; startTurn(); });
+$("againBtn").addEventListener("click", () => {
+  $("resultScreen").hidden = true;
+  $("startScreen").hidden = false;
+});
+$("shareBtn").addEventListener("click", async () => {
+  const text = shareText();
+  const url = location.href.split("#")[0];
+  try {
+    if (navigator.share) await navigator.share({ title: "Chungi", text, url });
+    else {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      $("shareBtn").textContent = "Copied!";
+      setTimeout(() => ($("shareBtn").textContent = "Share"), 1500);
+    }
+  } catch (_) { /* share cancelled */ }
+});
+$("mute").addEventListener("click", () => {
+  Sound.muted = !Sound.muted;
+  $("mute").textContent = Sound.muted ? "🔇" : "🔊";
+});
+
+updateBest();
+setBallStyle(ballStyle);
+// Swatch previews: draw each style's sprite into its button.
+document.querySelectorAll("[data-style]").forEach(btn => {
+  const sp = makeBallSprite(CHUNGI_STYLES[btn.dataset.style]);
+  const cv = btn.querySelector("canvas");
+  cv.width = cv.height = 88;
+  const g = cv.getContext("2d");
+  g.drawImage(sp.canvas, 0, 0, 88, 88);
+  const r = 88 * BALL_R / sp.size;
+  const shade = g.createRadialGradient(44, 44, r * 0.45, 44, 44, r);
+  shade.addColorStop(0, "rgba(0,0,0,0)"); shade.addColorStop(1, "rgba(0,0,0,.5)");
+  g.fillStyle = shade; g.beginPath(); g.arc(44, 44, r, 0, Math.PI * 2); g.fill();
+  btn.addEventListener("click", () => setBallStyle(btn.dataset.style));
+});
+resize();
+// Redraw the wall once the painted-sign font has loaded.
+document.fonts.ready.then(resize);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
